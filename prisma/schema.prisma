@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+  PROVIDER
+}
+
+enum OrganizationType {
+  CLIENT
+  PROVIDER
+  ADMIN
+}
+
+enum OrderStatus {
+  SENT
+  RECEIVED_BY_PROVIDER
+  IN_PROCESS
+  SHIPPED_TO_FINAL
+  CANCELLED
+}
+
+enum DestinationType {
+  CLIENT_WAREHOUSE
+  FINAL_CLIENT
+}
+
+enum ShippingType {
+  NATIONAL
+  INTERNATIONAL
+}
+
+enum PriceType {
+  FIXED
+  PER_KG
+}
+
+enum DocumentType {
+  FICHA_TECNICA
+  ETIQUETA
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String
+  name           String
+  role           Role
+  active         Boolean       @default(true)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  ordersCreated  Order[]       @relation("OrderCreatedBy")
+  statusEvents   OrderStatusEvent[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Organization {
+  id              String           @id @default(cuid())
+  type            OrganizationType
+  name            String
+  street          String?
+  city            String?
+  postalCode      String?
+  country         String           @default("España")
+  users           User[]
+  orders          Order[]          @relation("ClientOrders")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean          @default(true)
+  variants    ProductVariant[]
+  documents   ProductDocument[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  unitLabel  String
+  priceCents Int
+  priceType  PriceType   @default(FIXED)
+  vatRate    Float       @default(0.10)
+  active     Boolean     @default(true)
+  orderLines OrderLine[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model ProductDocument {
+  id        String       @id @default(cuid())
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  docType   DocumentType @default(FICHA_TECNICA)
+  title     String?
+  fileUrl   String
+  createdAt DateTime     @default(now())
+}
+
+model Order {
+  id                String             @id @default(cuid())
+  orderNumber       String             @unique
+  cancellationNumber String?           @unique
+  clientOrgId       String
+  clientOrg         Organization       @relation("ClientOrders", fields: [clientOrgId], references: [id])
+  createdByUserId   String
+  createdBy         User               @relation("OrderCreatedBy", fields: [createdByUserId], references: [id])
+  status            OrderStatus        @default(SENT)
+  destinationType   DestinationType
+  destName          String?
+  destStreet        String?
+  destCity          String?
+  destPostalCode    String?
+  destCountry       String             @default("España")
+  destEmail         String?
+  finalClientFirstName     String?
+  finalClientLastName      String?
+  finalClientStreet        String?
+  finalClientCity          String?
+  finalClientPostalCode    String?
+  finalClientCountry       String?
+  finalClientPhone         String?
+  finalClientPhoneSecondary String?
+  finalClientEmail         String?
+  shippingType      ShippingType
+  shippingCostCents Int
+  subtotalCents     Int
+  vatCents          Int                @default(0)
+  totalCents        Int
+  carrierCompany         String?
+  carrierTrackingNumber  String?
+  carrierPhone           String?
+  lines             OrderLine[]
+  statusEvents      OrderStatusEvent[]
+  trackingToken     TrackingToken?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model OrderLine {
+  id               String         @id @default(cuid())
+  orderId          String
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId        String
+  variant          ProductVariant @relation(fields: [variantId], references: [id])
+  quantity         Float
+  unitPriceCents   Int
+  lineTotalCents   Int
+  /** Peso real en kg (jamón entero, lomito) */
+  actualWeightKg   Float?
+  /** Paquetes o platos reales (loncheado, plateado) */
+  actualPieceCount Float?
+  /** Nº identificación interna Galvan (opcional) */
+  galvanInternalId String?
+}
+
+model OrderStatusEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdByUserId String?
+  createdBy User?       @relation(fields: [createdByUserId], references: [id])
+  createdAt DateTime    @default(now())
+}
+
+model TrackingToken {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+}

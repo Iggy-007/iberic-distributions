@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --wine: #7b1e2e;
+  --wine-dark: #5a1522;
+  --gold: #c9a227;
+  --cream: #faf7f2;
+  --foreground: #1a1a1a;
+}
+
+@theme inline {
+  --color-wine: var(--wine);
+  --color-wine-dark: var(--wine-dark);
+  --color-gold: var(--gold);
+  --color-cream: var(--cream);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--cream);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
