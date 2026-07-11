@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { DocumentType, Role } from "@prisma/client";
+import { DocumentType } from "@prisma/client";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canManageCatalog } from "@/lib/catalog-permissions";
+import { notifyAdminsOfCatalogChange } from "@/lib/catalog-notifications";
 
 const linkSchema = z.object({
   fileUrl: z.union([z.string().url(), z.string().regex(/^\//)]),
@@ -12,12 +14,20 @@ const linkSchema = z.object({
   title: z.string().optional(),
 });
 
+async function getProductName(productId: string) {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { name: true },
+  });
+  return product?.name ?? "Producto";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || session.user.role !== Role.ADMIN) {
+  if (!session || !canManageCatalog(session.user.role)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -38,6 +48,15 @@ export async function POST(
         title: parsed.data.title ?? null,
         fileUrl: parsed.data.fileUrl,
       },
+    });
+
+    const productName = await getProductName(id);
+    await notifyAdminsOfCatalogChange({
+      type: "PRODUCT_DOCUMENT_ADDED",
+      summary: `Documento añadido a ${productName}`,
+      detail: parsed.data.title ?? parsed.data.docType,
+      productId: id,
+      actorUserId: session.user.id,
     });
 
     return NextResponse.json(doc, { status: 201 });
@@ -72,6 +91,15 @@ export async function POST(
     },
   });
 
+  const productName = await getProductName(id);
+  await notifyAdminsOfCatalogChange({
+    type: "PRODUCT_DOCUMENT_ADDED",
+    summary: `Documento subido a ${productName}`,
+    detail: title ?? file.name,
+    productId: id,
+    actorUserId: session.user.id,
+  });
+
   return NextResponse.json(doc, { status: 201 });
 }
 
@@ -80,7 +108,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || session.user.role !== Role.ADMIN) {
+  if (!session || !canManageCatalog(session.user.role)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -90,9 +118,24 @@ export async function DELETE(
   }
 
   const { id: productId } = await params;
+  const doc = await prisma.productDocument.findFirst({
+    where: { id: docId, productId },
+  });
+
   await prisma.productDocument.deleteMany({
     where: { id: docId, productId },
   });
+
+  if (doc) {
+    const productName = await getProductName(productId);
+    await notifyAdminsOfCatalogChange({
+      type: "PRODUCT_DOCUMENT_REMOVED",
+      summary: `Documento eliminado de ${productName}`,
+      detail: doc.title ?? doc.docType,
+      productId,
+      actorUserId: session.user.id,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

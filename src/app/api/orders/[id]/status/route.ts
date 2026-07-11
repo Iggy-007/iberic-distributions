@@ -23,6 +23,7 @@ const statusSchema = z
     note: z.string().optional(),
     carrierCompany: z.string().optional(),
     carrierTrackingNumber: z.string().optional(),
+    carrierTrackingUrl: z.string().optional(),
     carrierPhone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -47,6 +48,25 @@ const statusSchema = z
         message: "Teléfono del transportista obligatorio",
         path: ["carrierPhone"],
       });
+    }
+    const trackingUrl = data.carrierTrackingUrl?.trim();
+    if (trackingUrl) {
+      try {
+        const parsed = new URL(trackingUrl);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "El enlace de seguimiento debe empezar por http:// o https://",
+            path: ["carrierTrackingUrl"],
+          });
+        }
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "El enlace de seguimiento online no es válido",
+          path: ["carrierTrackingUrl"],
+        });
+      }
     }
   });
 
@@ -118,6 +138,7 @@ export async function PATCH(
         !orderHasCarrierInfo({
           carrierCompany: parsed.data.carrierCompany ?? null,
           carrierTrackingNumber: parsed.data.carrierTrackingNumber ?? null,
+          carrierTrackingUrl: parsed.data.carrierTrackingUrl ?? null,
           carrierPhone: parsed.data.carrierPhone ?? null,
         })
       ) {
@@ -134,6 +155,7 @@ export async function PATCH(
       ? {
           carrierCompany: parsed.data.carrierCompany!.trim(),
           carrierTrackingNumber: parsed.data.carrierTrackingNumber!.trim(),
+          carrierTrackingUrl: parsed.data.carrierTrackingUrl?.trim() || null,
           carrierPhone: parsed.data.carrierPhone!.trim(),
         }
       : {};
@@ -185,6 +207,7 @@ export async function PATCH(
       destinationCity: updated.destCity ?? "",
       carrierCompany: updated.carrierCompany ?? undefined,
       carrierTrackingNumber: updated.carrierTrackingNumber ?? undefined,
+      carrierTrackingUrl: updated.carrierTrackingUrl ?? undefined,
       carrierPhone: updated.carrierPhone ?? undefined,
     });
   }

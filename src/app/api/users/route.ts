@@ -4,6 +4,7 @@ import { Role, OrganizationType } from "@prisma/client";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logUserActivity } from "@/lib/user-activity";
 
 const createUserSchema = z.object({
   email: z.string().email(),
@@ -79,6 +80,24 @@ export async function POST(request: NextRequest) {
       organizationId,
     },
     include: { organization: true },
+  });
+
+  await logUserActivity({
+    userId: user.id,
+    action: "USER_CREATED",
+    summary: "Cuenta creada",
+    detail: `Rol: ${data.role}${data.organizationName ? ` — ${data.organizationName}` : ""}`,
+    entityType: "user",
+    entityId: user.id,
+  });
+
+  await logUserActivity({
+    userId: session.user.id,
+    action: "USER_CREATED",
+    summary: `Creó usuario ${user.name}`,
+    detail: user.email,
+    entityType: "user",
+    entityId: user.id,
   });
 
   return NextResponse.json(user, { status: 201 });

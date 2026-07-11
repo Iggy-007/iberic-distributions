@@ -12,15 +12,36 @@ Aplicación B2B para la venta y seguimiento de productos ibéricos de **Galvan**
 
 ## Productos
 
-- **Jamón Ibérico 75%**: entero (23,00 €/kg + IVA 10%), loncheado (1,25 €/paquete + IVA 10%), plateado (2,50 €/plato + IVA 10%)
-- **Lomito ibérico**: 49,00 €/kg + IVA 10%; loncheado 3,50 €/paquete + IVA 21%
+Cada producto del catálogo tiene una **presentación base** (entero) y **servicios combinables** opcionales:
 
-Los precios en catálogo y pedidos muestran el importe con IVA incluido.
+| Producto | Base (entero) | Servicios combinables |
+|----------|---------------|------------------------|
+| **Jamón Ibérico 75%** | 23,00 €/kg + IVA 10% | Loncheado (sobres) 1,25 €/paquete + IVA 10%; Plateado 2,50 €/plato + IVA 10% |
+| **Lomito ibérico** | 49,00 €/kg + IVA 10% | Loncheado (sobres) 3,50 €/paquete + IVA 21% |
+
+Las variantes se muestran como **Entero**, **Loncheado (sobres)** y **Plateado** (no se repite el nombre del producto en el servicio). Cada servicio puede tener su propia **referencia Galvan** (p. ej. `GAL-JAM-75-LON`).
+
+Los precios en catálogo y pedidos muestran el importe **con IVA incluido**.
+
+### Pesos y unidades estimados (orientativos)
+
+| Tipo | Estimación usada para el precio |
+|------|----------------------------------|
+| Jamón entero | 7–7,5 kg por unidad (se usa 7,5 kg) |
+| Lomito entero | **400 g** por unidad |
+| Loncheado (jamón o lomito) | ~30 paquetes por unidad pedida |
+| Plateado | ~30 platos por unidad pedida |
+
+El cobro final de jamón y lomito enteros se ajusta al **peso real** registrado por el proveedor.
 
 ## Envío
 
+El envío es un **servicio a nivel de pedido** (no un producto del catálogo):
+
 - Nacional (España): 6,00 €
 - Internacional: 15,00 €
+
+Admin y proveedor pueden editar las tarifas desde **Catálogo → Servicio de envío**.
 
 ## Requisitos
 
@@ -65,16 +86,22 @@ Copiar `.env.example` a `.env`:
 - `NEXTAUTH_URL` — URL de la app
 - `RESEND_API_KEY` — (opcional) para emails de seguimiento al cliente final
 
-## Pedidos y totales estimados
+## Pedidos y desglose fiscal
 
-Al crear un pedido (paso 4 del formulario) y en el detalle de pedidos existentes se muestran totales estimados:
+En el **resumen estimado** (nuevo pedido), el **detalle de pedido** (cliente, admin, proveedor) y el **seguimiento público** se usa un desglose fiscal unificado, alineado con la práctica habitual en España:
 
-- Subtotal sin IVA
-- Desglose de IVA por tipo (10% / 21%)
-- Subtotal con IVA
-- Gastos de envío
+1. **Líneas del pedido** — concepto + importe total (IVA incl.) a la derecha
+2. **Desglose fiscal** — tabla: Tipo IVA | Base imponible | Cuota IVA
+3. **Totales** — Base imponible total, IVA total, Importe productos (IVA incl.), Gastos de envío, **Total**
 
-Cada línea indica importe sin IVA, IVA y total con IVA. Los totales se agrupan por tipo impositivo.
+Al crear un pedido, el cliente elige productos agrupados por tarjeta (producto base + servicios combinables en el mismo bloque).
+
+## Panel administrador
+
+Navegación: **Panel · Pedidos · Catálogo** (izquierda) y **Usuarios** (derecha).
+
+- **Catálogo**: pestañas *Gestionar productos y servicios* y *Servicio de envío*
+- El proveedor puede editar el catálogo; el admin recibe **notificaciones** (y email) cuando hay cambios
 
 ## Panel proveedor (Kanban)
 
@@ -93,6 +120,8 @@ Cada línea indica importe sin IVA, IVA y total con IVA. Los totales se agrupan 
 - **Clic** en una tarjeta → panel lateral para introducir datos reales de la línea
 - **Doble clic** → detalle completo del pedido
 - **Arrastrar** a la columna siguiente → avanza el estado (si se cumplen las validaciones)
+
+El proveedor también accede a **Catálogo** (mismas pestañas que el admin para productos y envío).
 
 ### Datos reales obligatorios
 
@@ -125,20 +154,24 @@ Cuando un pedido se marca como *Enviado a cliente final*, si hay email de destin
 
 `/tracking/{token}`
 
-La página pública muestra el estado del pedido, la línea de tiempo y los datos del transportista (empresa, tracking, teléfono).
+La página pública muestra el estado del pedido, el desglose fiscal del pedido, la línea de tiempo y los datos del transportista (empresa, tracking, teléfono).
 
 ## Estructura
 
-- `/admin` — panel administrador (usuarios, productos, pedidos)
+- `/admin` — panel administrador (usuarios, pedidos, catálogo)
 - `/client` — Sake Team Food (nuevo pedido, mis pedidos, catálogo)
-- `/provider/orders` — Galvan (tablero Kanban, catálogo)
+- `/provider/orders` — Galvan (tablero Kanban)
+- `/provider/catalog` — Galvan (catálogo y envío)
 - `/tracking/[token]` — seguimiento público sin login
-- `/login` — inicio de sesión (logo de marca a tamaño destacado)
+- `/login` — inicio de sesión
 
 ## Modelo de datos (resumen)
 
-Campos relevantes añadidos al flujo de proveedor:
+Campos relevantes del flujo actual:
 
+- **ProductVariant**: `presentation` (`BASE` | `LONCHEADO` | `PLATEADO`), `galvanReference` (por servicio)
+- **ShippingRate**: tarifas nacionales/internacionales, `supplier`
+- **CatalogNotification**: avisos al admin por cambios de catálogo del proveedor
 - **OrderLine**: `actualWeightKg`, `actualPieceCount`, `galvanInternalId`
 - **Order**: `cancellationNumber`, `carrierCompany`, `carrierTrackingNumber`, `carrierPhone`
 

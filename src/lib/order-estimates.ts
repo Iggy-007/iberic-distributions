@@ -1,4 +1,4 @@
-import type { PriceType } from "@prisma/client";
+import type { PriceType, VariantPresentation } from "@prisma/client";
 import { calcVatCents } from "./pricing";
 import { formatEstimatedPriceForUnits } from "./estimated-prices";
 
@@ -11,8 +11,13 @@ export const WHOLE_HAM_KG_ESTIMATE = WHOLE_HAM_KG_MAX;
 export const HAM_LONCHEADO_PACKAGES_PER_UNIT = 30;
 /** Platos estimados por unidad pedida de jamón plateado */
 export const HAM_PLATEADO_PLATES_PER_UNIT = 30;
-/** Kg estimados por unidad de lomito (cobro por kg) */
-export const LOMITO_KG_ESTIMATE = 1.5;
+/** Kg estimados por unidad de lomito (400 g; cobro por kg) */
+export const LOMITO_KG_ESTIMATE = 0.4;
+
+export function formatLomitoWeightLabel(kg: number = LOMITO_KG_ESTIMATE): string {
+  const grams = Math.round(kg * 1000);
+  return `${grams} g`;
+}
 
 export type VariantKind =
   | "whole_ham"
@@ -29,6 +34,7 @@ export interface VariantForEstimate {
   priceCents: number;
   priceType: PriceType;
   vatRate: number;
+  presentation?: VariantPresentation;
   product: { name: string };
 }
 
@@ -65,13 +71,53 @@ export interface ResolvedOrderLine {
   vatRate: number;
 }
 
-export function getVariantKind(name: string): VariantKind {
+export function getVariantKind(
+  variantName: string,
+  productName?: string,
+  presentation?: VariantPresentation | null
+): VariantKind {
+  if (presentation) {
+    const product = productName?.toLowerCase() ?? "";
+    if (presentation === "PLATEADO") return "ham_plateado";
+    if (presentation === "LONCHEADO") {
+      return product.includes("lomito") ? "lomito_loncheado" : "ham_loncheado";
+    }
+    if (presentation === "BASE") {
+      if (product.includes("jamón") || product.includes("jamon")) {
+        return "whole_ham";
+      }
+      if (product.includes("lomito")) return "lomito";
+      return "other";
+    }
+  }
+
+  const legacy = getVariantKindFromLegacyName(variantName);
+  if (legacy) return legacy;
+
+  const product = productName?.toLowerCase() ?? "";
+  const variant = variantName.toLowerCase().trim();
+
+  if (product.includes("jamón") || product.includes("jamon")) {
+    if (variant === "entero") return "whole_ham";
+    if (variant === "loncheado") return "ham_loncheado";
+    if (variant === "plateado") return "ham_plateado";
+  }
+
+  if (product.includes("lomito")) {
+    if (variant === "entero") return "lomito";
+    if (variant === "loncheado") return "lomito_loncheado";
+  }
+
+  return "other";
+}
+
+function getVariantKindFromLegacyName(name: string): VariantKind | null {
   if (name === "Jamón entero") return "whole_ham";
   if (name === "Jamón loncheado") return "ham_loncheado";
   if (name === "Jamón plateado") return "ham_plateado";
   if (name === "Lomito ibérico loncheado") return "lomito_loncheado";
   if (name === "Lomito ibérico") return "lomito";
-  return "other";
+  return null;
 }
 
 export function formatWholeHamWeightLabel(units: number): string {
@@ -91,7 +137,7 @@ export function getVariantOrderHint(kind: VariantKind): string | null {
     case "ham_plateado":
       return `~${HAM_PLATEADO_PLATES_PER_UNIT} platos por unidad (estimado)`;
     case "lomito":
-      return `~${LOMITO_KG_ESTIMATE} kg por unidad (cobro por kg estimado)`;
+      return `~${formatLomitoWeightLabel()} por unidad (cobro por kg estimado)`;
     default:
       return null;
   }
@@ -134,7 +180,11 @@ export function buildOrderEstimate(
     if (!variant || cartLine.quantity <= 0) continue;
 
     const units = Math.round(cartLine.quantity);
-    const kind = getVariantKind(variant.name);
+    const kind = getVariantKind(
+      variant.name,
+      variant.product.name,
+      variant.presentation
+    );
 
     if (kind === "whole_ham") {
       const hamSubtotal = billedKgLineTotal(
@@ -254,7 +304,11 @@ export function resolveOrderLines(
     if (!variant || cartLine.quantity <= 0) continue;
 
     const units = Math.round(cartLine.quantity);
-    const kind = getVariantKind(variant.name);
+    const kind = getVariantKind(
+      variant.name,
+      variant.product.name,
+      variant.presentation
+    );
 
     if (kind === "whole_ham") {
       result.push({
@@ -327,23 +381,40 @@ export function resolveOrderLines(
   return result;
 }
 
-export function resolveLineVatRate(variantName: string, vatRate: number): number {
-  return getVariantKind(variantName) === "whole_ham" ? 0.1 : vatRate;
+export function resolveLineVatRate(
+  variantName: string,
+  vatRate: number,
+  productName?: string,
+  presentation?: VariantPresentation | null
+): number {
+  return getVariantKind(variantName, productName, presentation) === "whole_ham"
+    ? 0.1
+    : vatRate;
 }
 
 export interface StoredOrderLine {
   id?: string;
   quantity: number;
   lineTotalCents: number;
-  variant: VariantForEstimate & { product: { name: string } };
+  variant: VariantForEstimate & {
+    product: { name: string };
+    presentation?: VariantPresentation;
+  };
 }
 
 /** Infers ordered units from persisted line quantities (supports legacy kg orders). */
 export function inferStoredLineUnits(line: {
   quantity: number;
-  variant: Pick<VariantForEstimate, "name" | "unitLabel">;
+  variant: Pick<VariantForEstimate, "name" | "unitLabel"> & {
+    product?: { name: string };
+    presentation?: VariantPresentation;
+  };
 }): number {
-  const kind = getVariantKind(line.variant.name);
+  const kind = getVariantKind(
+    line.variant.name,
+    line.variant.product?.name,
+    line.variant.presentation
+  );
   const q = line.quantity;
 
   switch (kind) {
@@ -373,7 +444,7 @@ export function inferStoredLineUnits(line: {
 }
 
 function storedLineQuantityLabel(line: StoredOrderLine): string {
-  const kind = getVariantKind(line.variant.name);
+  const kind = getVariantKind(line.variant.name, line.variant.product.name);
   const units = inferStoredLineUnits(line);
 
   switch (kind) {
@@ -394,8 +465,8 @@ function storedLineQuantityLabel(line: StoredOrderLine): string {
       return `${units} unid. (~${plates} platos)`;
     }
     case "lomito": {
-      const kg = units * LOMITO_KG_ESTIMATE;
-      return `${units} unid. (~${kg} kg)`;
+      const grams = Math.round(units * LOMITO_KG_ESTIMATE * 1000);
+      return `${units} unid. (~${grams} g)`;
     }
     default:
       return `${Math.round(line.quantity)} ${line.variant.unitLabel}`;
@@ -410,8 +481,13 @@ export function buildStoredOrderEstimate(
   const vatInputs: { lineTotalCents: number; vatRate: number }[] = [];
 
   for (const line of lines) {
-    const kind = getVariantKind(line.variant.name);
-    const vatRate = resolveLineVatRate(line.variant.name, line.variant.vatRate);
+    const kind = getVariantKind(line.variant.name, line.variant.product.name);
+    const vatRate = resolveLineVatRate(
+      line.variant.name,
+      line.variant.vatRate,
+      line.variant.product.name,
+      line.variant.presentation
+    );
     const units = inferStoredLineUnits(line);
     const priceFormula =
       kind === "other"

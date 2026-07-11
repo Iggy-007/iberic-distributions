@@ -10,9 +10,9 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrdersForUser } from "@/lib/orders";
 import {
-  getShippingCostCents,
   resolveShippingType,
 } from "@/lib/shipping";
+import { getShippingCostCentsFromDb } from "@/lib/shipping-rates";
 import { orderTotalsFromLines } from "@/lib/pricing";
 import { finalClientFieldsSchema } from "@/lib/final-client";
 import { resolveOrderLines } from "@/lib/order-estimates";
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   const shippingType = resolveShippingType(destCountry);
-  const shippingCostCents = getShippingCostCents(shippingType);
+  const shippingCostCents = await getShippingCostCentsFromDb(shippingType);
 
   const orderLines = resolveOrderLines(data.lines, allVariants);
 

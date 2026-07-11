@@ -5,9 +5,11 @@ import {
   OrganizationType,
   Role,
   ShippingType,
+  VariantPresentation,
 } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import { generateTrackingToken } from "../src/lib/utils";
+import { ensureDefaultShippingRates } from "../src/lib/shipping-rates";
 
 const prisma = new PrismaClient();
 
@@ -87,27 +89,33 @@ async function main() {
   const jamon = await prisma.product.create({
     data: {
       name: "Jamón Ibérico 75%",
+      galvanReference: "GAL-JAM-75",
       description:
         "Jamón ibérico de bellota 75% raza ibérica. Producto excepcional de Galvan.",
       variants: {
         create: [
           {
-            name: "Jamón entero",
+            name: "Entero",
+            presentation: VariantPresentation.BASE,
             unitLabel: "unidad",
             priceCents: 2300,
             priceType: "PER_KG",
             vatRate: 0.1,
           },
           {
-            name: "Jamón loncheado",
-            unitLabel: "unidad",
+            name: "Loncheado (sobres)",
+            presentation: VariantPresentation.LONCHEADO,
+            galvanReference: "GAL-JAM-75-LON",
+            unitLabel: "paquete",
             priceCents: 125,
             priceType: "FIXED",
             vatRate: 0.21,
           },
           {
-            name: "Jamón plateado",
-            unitLabel: "unidad",
+            name: "Plateado",
+            presentation: VariantPresentation.PLATEADO,
+            galvanReference: "GAL-JAM-75-PLA",
+            unitLabel: "plato",
             priceCents: 250,
             priceType: "FIXED",
             vatRate: 0.21,
@@ -120,19 +128,23 @@ async function main() {
   const lomito = await prisma.product.create({
     data: {
       name: "Lomito ibérico",
+      galvanReference: "GAL-LOM-01",
       description: "Lomito ibérico de máxima calidad, curado por Galvan.",
       variants: {
         create: [
           {
-            name: "Lomito ibérico",
+            name: "Entero",
+            presentation: VariantPresentation.BASE,
             unitLabel: "unidad",
             priceCents: 4900,
             priceType: "PER_KG",
             vatRate: 0.1,
           },
           {
-            name: "Lomito ibérico loncheado",
-            unitLabel: "unidad",
+            name: "Loncheado (sobres)",
+            presentation: VariantPresentation.LONCHEADO,
+            galvanReference: "GAL-LOM-01-LON",
+            unitLabel: "paquete",
             priceCents: 350,
             priceType: "FIXED",
             vatRate: 0.21,
@@ -172,16 +184,22 @@ async function main() {
   });
 
   const jamonLoncheado = await prisma.productVariant.findFirst({
-    where: { productId: jamon.id, name: "Jamón loncheado" },
+    where: {
+      productId: jamon.id,
+      presentation: VariantPresentation.LONCHEADO,
+    },
   });
   const lomitoVariant = await prisma.productVariant.findFirst({
-    where: { productId: lomito.id },
+    where: {
+      productId: lomito.id,
+      presentation: VariantPresentation.BASE,
+    },
   });
 
   if (jamonLoncheado && lomitoVariant) {
     const orderNumber = "ORD-250709-1001";
     const loncheadoLineTotal = jamonLoncheado.priceCents * 10;
-    const lomitoLineTotal = Math.round(lomitoVariant.priceCents * 2.5);
+    const lomitoLineTotal = Math.round(lomitoVariant.priceCents * 0.4);
     const subtotal = loncheadoLineTotal + lomitoLineTotal;
     const shipping = 600;
     const vatCents =
@@ -223,7 +241,7 @@ async function main() {
             },
             {
               variantId: lomitoVariant.id,
-              quantity: 2.5,
+              quantity: 1,
               unitPriceCents: lomitoVariant.priceCents,
               lineTotalCents: lomitoLineTotal,
             },
@@ -252,6 +270,8 @@ async function main() {
       },
     });
   }
+
+  await ensureDefaultShippingRates();
 
   console.log("Seed completed.");
   console.log("Users:");

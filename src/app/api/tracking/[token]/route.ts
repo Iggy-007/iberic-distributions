@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
 import {
   calcOrderVatCentsFromLines,
-  formatOrderVatLabel,
 } from "@/lib/pricing";
+import { buildStoredOrderEstimate } from "@/lib/order-estimates";
 import { formatEuros } from "@/lib/shipping";
 
 export async function GET(
@@ -49,20 +49,25 @@ export async function GET(
       ? order.totalCents
       : order.subtotalCents + vatCents + order.shippingCostCents;
 
+  const estimate = buildStoredOrderEstimate(
+    order.lines.map((line) => ({
+      id: line.id,
+      quantity: line.quantity,
+      lineTotalCents: line.lineTotalCents,
+      variant: line.variant,
+    }))
+  );
+
   return NextResponse.json({
     orderNumber: order.orderNumber,
     status: order.status,
     statusLabel: ORDER_STATUS_LABELS[order.status],
     destinationCity: order.destCity,
     destinationCountry: order.destCountry,
-    products: order.lines.map((l) => ({
-      name: `${l.variant.product.name} — ${l.variant.name}`,
-      quantity: l.quantity,
-    })),
-    subtotal: formatEuros(order.subtotalCents),
-    vat: formatEuros(vatCents),
-    vatLabel: formatOrderVatLabel(lineVatInputs),
-    shipping: formatEuros(order.shippingCostCents),
+    financial: {
+      lines: estimate.lines,
+      shippingCostCents: order.shippingCostCents,
+    },
     total: formatEuros(totalCents),
     timeline: order.statusEvents.map((e) => ({
       status: e.status,
@@ -72,10 +77,12 @@ export async function GET(
     carrier:
       order.carrierCompany ||
       order.carrierTrackingNumber ||
+      order.carrierTrackingUrl ||
       order.carrierPhone
         ? {
             company: order.carrierCompany,
             trackingNumber: order.carrierTrackingNumber,
+            trackingUrl: order.carrierTrackingUrl,
             phone: order.carrierPhone,
           }
         : null,

@@ -8,6 +8,8 @@ import {
   buildLineActualPayload,
 } from "@/lib/line-actuals";
 import type { KanbanOrder } from "@/lib/kanban-types";
+import { canCancelOrder } from "@/lib/order-groups";
+import { CancelOrderButton } from "@/components/CancelOrderButton";
 import {
   ProviderLineActualFields,
   lineToDraft,
@@ -47,7 +49,14 @@ export function ProviderOrderActualsPanel({
     for (const line of order.lines) {
       const draft = drafts.find((d) => d.lineId === line.id)!;
       const validationError = validateLineDraft(line, draft);
-      if (validationError && lineNeedsActuals(line.variant.name)) {
+      if (
+        validationError &&
+        lineNeedsActuals(
+          line.variant.name,
+          line.variant.product.name,
+          line.variant.presentation
+        )
+      ) {
         setError(validationError);
         setLoading(false);
         return;
@@ -56,7 +65,13 @@ export function ProviderOrderActualsPanel({
 
     const payload = {
       lines: order.lines
-        .filter((line) => lineNeedsActuals(line.variant.name))
+        .filter((line) =>
+          lineNeedsActuals(
+            line.variant.name,
+            line.variant.product.name,
+            line.variant.presentation
+          )
+        )
         .map((line) => {
           const draft = drafts.find((d) => d.lineId === line.id)!;
           const built = buildLineActualPayload(line, draft);
@@ -138,6 +153,13 @@ export function ProviderOrderActualsPanel({
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
+          )}
+          {canCancelOrder(order.status) && (
+            <CancelOrderButton
+              orderId={order.id}
+              status={order.status}
+              onCancelled={onSaved}
+            />
           )}
           <div className="flex gap-3">
             <button

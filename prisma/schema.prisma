@@ -47,6 +47,12 @@ enum DocumentType {
   ETIQUETA
 }
 
+enum VariantPresentation {
+  BASE
+  LONCHEADO
+  PLATEADO
+}
+
 model User {
   id             String        @id @default(cuid())
   email          String        @unique
@@ -58,6 +64,8 @@ model User {
   organization   Organization? @relation(fields: [organizationId], references: [id])
   ordersCreated  Order[]       @relation("OrderCreatedBy")
   statusEvents   OrderStatusEvent[]
+  activityLogs   UserActivityLog[]
+  catalogNotificationsActed CatalogNotification[] @relation("CatalogNotificationActor")
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -77,29 +85,33 @@ model Organization {
 }
 
 model Product {
-  id          String           @id @default(cuid())
-  name        String
-  description String?
-  active      Boolean          @default(true)
-  variants    ProductVariant[]
-  documents   ProductDocument[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  name            String
+  galvanReference String           @default("")
+  description     String?
+  active          Boolean          @default(true)
+  variants        ProductVariant[]
+  documents       ProductDocument[]
+  catalogNotifications CatalogNotification[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model ProductVariant {
-  id         String      @id @default(cuid())
-  productId  String
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name       String
-  unitLabel  String
-  priceCents Int
-  priceType  PriceType   @default(FIXED)
-  vatRate    Float       @default(0.10)
-  active     Boolean     @default(true)
-  orderLines OrderLine[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id              String               @id @default(cuid())
+  productId       String
+  product         Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name            String
+  presentation    VariantPresentation  @default(BASE)
+  galvanReference String               @default("")
+  unitLabel       String
+  priceCents   Int
+  priceType    PriceType            @default(FIXED)
+  vatRate      Float                @default(0.10)
+  active       Boolean              @default(true)
+  orderLines   OrderLine[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 }
 
 model ProductDocument {
@@ -144,6 +156,7 @@ model Order {
   totalCents        Int
   carrierCompany         String?
   carrierTrackingNumber  String?
+  carrierTrackingUrl     String?
   carrierPhone           String?
   lines             OrderLine[]
   statusEvents      OrderStatusEvent[]
@@ -176,8 +189,22 @@ model OrderStatusEvent {
   status    OrderStatus
   note      String?
   createdByUserId String?
-  createdBy User?       @relation(fields: [createdByUserId], references: [id])
+  createdBy User?       @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt DateTime    @default(now())
+}
+
+model UserActivityLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  summary    String
+  detail     String?
+  entityType String?
+  entityId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model TrackingToken {
@@ -187,4 +214,27 @@ model TrackingToken {
   token     String   @unique
   expiresAt DateTime?
   createdAt DateTime @default(now())
+}
+
+model ShippingRate {
+  type       ShippingType @id
+  priceCents Int
+  label      String
+  supplier   String       @default("")
+  updatedAt  DateTime     @updatedAt
+}
+
+model CatalogNotification {
+  id          String   @id @default(cuid())
+  type        String
+  summary     String
+  detail      String?
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  actorUserId String
+  actor       User     @relation("CatalogNotificationActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([read, createdAt])
 }

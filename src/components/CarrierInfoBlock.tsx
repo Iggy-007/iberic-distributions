@@ -10,6 +10,7 @@ export function CarrierInfoBlock({
   if (
     !carrier.carrierCompany &&
     !carrier.carrierTrackingNumber &&
+    !carrier.carrierTrackingUrl &&
     !carrier.carrierPhone
   ) {
     return null;
@@ -36,6 +37,21 @@ export function CarrierInfoBlock({
             <dt className="shrink-0 text-stone-500">Nº seguimiento:</dt>
             <dd className="font-medium text-stone-800 break-all">
               {carrier.carrierTrackingNumber}
+            </dd>
+          </div>
+        )}
+        {carrier.carrierTrackingUrl && (
+          <div className="flex gap-2">
+            <dt className="shrink-0 text-stone-500">Seguimiento online:</dt>
+            <dd>
+              <a
+                href={carrier.carrierTrackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-wine hover:underline break-all"
+              >
+                Ver envío en la web del transportista
+              </a>
             </dd>
           </div>
         )}

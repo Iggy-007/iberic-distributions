@@ -26,6 +26,7 @@ export function ProviderShipmentForm({
   const [values, setValues] = useState<CarrierFormValues>({
     carrierCompany: initial?.carrierCompany ?? "",
     carrierTrackingNumber: initial?.carrierTrackingNumber ?? "",
+    carrierTrackingUrl: initial?.carrierTrackingUrl ?? "",
     carrierPhone: initial?.carrierPhone ?? "",
   });
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,7 @@ export function ProviderShipmentForm({
         status: "SHIPPED_TO_FINAL",
         carrierCompany: values.carrierCompany.trim(),
         carrierTrackingNumber: values.carrierTrackingNumber.trim(),
+        carrierTrackingUrl: values.carrierTrackingUrl.trim() || undefined,
         carrierPhone: values.carrierPhone.trim(),
       }),
     });
@@ -93,6 +95,21 @@ export function ProviderShipmentForm({
           className={inputClass}
           placeholder="Ej. 1234567890"
         />
+      </label>
+      <label className="block text-sm font-medium text-stone-700">
+        Enlace seguimiento online
+        <input
+          type="url"
+          value={values.carrierTrackingUrl}
+          onChange={(e) =>
+            setValues((v) => ({ ...v, carrierTrackingUrl: e.target.value }))
+          }
+          className={inputClass}
+          placeholder="https://www.seur.com/seguimiento/..."
+        />
+        <span className="mt-1 block text-xs font-normal text-stone-500">
+          Opcional. URL de la web del transportista para seguir el envío.
+        </span>
       </label>
       <label className="block text-sm font-medium text-stone-700">
         Teléfono del transportista

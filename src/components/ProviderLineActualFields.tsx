@@ -11,6 +11,7 @@ import {
   type LineActualDraft,
   type LineForActuals,
 } from "@/lib/line-actuals";
+import { ProductGalvanReference } from "@/components/ProductGalvanReference";
 
 export interface LineDraft extends LineActualDraft {
   lineId: string;
@@ -25,12 +26,20 @@ export function ProviderLineActualFields({
   draft,
   onUpdate,
 }: {
-  line: LineForActuals & { id: string; variant: LineForActuals["variant"] & { product: { name: string } } };
+  line: LineForActuals & { id: string; variant: LineForActuals["variant"] & { product: { name: string; galvanReference?: string }; presentation?: import("@prisma/client").VariantPresentation } };
   draft: LineDraft;
   onUpdate: (field: keyof Omit<LineDraft, "lineId">, value: string) => void;
 }) {
-  const fields = getLineActualFields(line.variant.name);
-  const piecesLabel = getPiecesLabel(line.variant.name);
+  const fields = getLineActualFields(
+    line.variant.name,
+    line.variant.product.name,
+    line.variant.presentation
+  );
+  const piecesLabel = getPiecesLabel(
+    line.variant.name,
+    line.variant.product.name,
+    line.variant.presentation
+  );
   const showGalvanId = showGalvanInternalIdField(fields, line, draft);
 
   if (!fields.weight && !fields.pieces) {
@@ -39,6 +48,10 @@ export function ProviderLineActualFields({
         <p className="font-medium">
           {line.variant.product.name} — {line.variant.name}
         </p>
+        <ProductGalvanReference
+          reference={line.variant.product.galvanReference}
+          compact
+        />
         <p className="text-stone-500 mt-1">
           {formatLineOrderedSummary(line)}
         </p>
@@ -57,6 +70,10 @@ export function ProviderLineActualFields({
       <p className="font-medium text-stone-900">
         {line.variant.product.name} — {line.variant.name}
       </p>
+      <ProductGalvanReference
+        reference={line.variant.product.galvanReference}
+        compact
+      />
       <p className="text-xs text-stone-500 mt-1">
         Pedido: {formatLineOrderedSummary(line)}
       </p>

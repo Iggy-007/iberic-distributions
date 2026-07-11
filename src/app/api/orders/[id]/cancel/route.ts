@@ -1,18 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { OrderStatus, Role } from "@prisma/client";
+import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrderById } from "@/lib/orders";
-import { canClientCancelOrder } from "@/lib/order-groups";
+import { canCancelOrder } from "@/lib/order-groups";
 import { generateCancellationNumber } from "@/lib/utils";
 
+const cancelSchema = z.object({
+  justification: z
+    .string()
+    .trim()
+    .min(1, "La justificación es obligatoria"),
+});
+
 export async function POST(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || session.user.role !== Role.CLIENT) {
+  if (
+    !session ||
+    (session.user.role !== Role.CLIENT && session.user.role !== Role.PROVIDER)
+  ) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const parsed = cancelSchema.safeParse(body);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Datos inválidos";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const { id } = await params;
@@ -27,7 +45,7 @@ export async function POST(
     return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
   }
 
-  if (!canClientCancelOrder(order.status)) {
+  if (!canCancelOrder(order.status)) {
     return NextResponse.json(
       { error: "Este pedido ya no se puede cancelar" },
       { status: 400 }
@@ -57,6 +75,7 @@ export async function POST(
       data: {
         orderId: id,
         status: OrderStatus.CANCELLED,
+        note: parsed.data.justification,
         createdByUserId: session.user.id,
       },
     });

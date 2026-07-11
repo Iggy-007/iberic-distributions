@@ -2,27 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PriceType } from "@prisma/client";
-import { formatEuros, getShippingCostCents, resolveShippingType } from "@/lib/shipping";
-import { formatVariantPrice, formatVatPercentLabel } from "@/lib/pricing";
+import { formatEuros, resolveShippingType } from "@/lib/shipping";
+import type { ShippingRates } from "@/lib/shipping-rates";
+import { buildOrderEstimate } from "@/lib/order-estimates";
 import {
-  buildOrderEstimate,
-  getVariantKind,
-  getVariantOrderHint,
-} from "@/lib/order-estimates";
-import {
-  formatEstimatedPriceForUnits,
-} from "@/lib/estimated-prices";
-
-interface Variant {
-  id: string;
-  name: string;
-  unitLabel: string;
-  priceCents: number;
-  priceType: PriceType;
-  vatRate: number;
-  product: { id: string; name: string };
-}
+  OrderProductPicker,
+  type OrderVariant,
+} from "@/components/OrderProductPicker";
+import { OrderFinancialSummary } from "@/components/OrderFinancialSummary";
 
 interface CartLine {
   variantId: string;
@@ -41,7 +28,13 @@ const emptyFinalClient = {
   finalClientEmail: "",
 };
 
-export function NewOrderForm({ variants }: { variants: Variant[] }) {
+export function NewOrderForm({
+  variants,
+  shippingRates,
+}: {
+  variants: OrderVariant[];
+  shippingRates: ShippingRates;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -75,26 +68,10 @@ export function NewOrderForm({ variants }: { variants: Variant[] }) {
       ? "España"
       : finalClient.finalClientCountry;
   const shippingType = resolveShippingType(country);
-  const shipping = getShippingCostCents(shippingType);
-  const totalEstimate = estimate.subtotalWithVatCents + shipping;
-
-  const subtotalByRate = estimate.lines.reduce((acc, line) => {
-    acc.set(
-      line.vatRate,
-      (acc.get(line.vatRate) ?? 0) + line.subtotalCents
-    );
-    return acc;
-  }, new Map<number, number>());
-
-  const vatByRate = estimate.lines.reduce((acc, line) => {
-    acc.set(line.vatRate, (acc.get(line.vatRate) ?? 0) + line.vatCents);
-    return acc;
-  }, new Map<number, number>());
-
-  const sortedVatRates = [...new Set(estimate.lines.map((l) => l.vatRate))].sort(
-    (a, b) => a - b
-  );
-
+  const shipping =
+    shippingType === "NATIONAL"
+      ? shippingRates.nationalCents
+      : shippingRates.internationalCents;
   function canProceedFromFinalClient() {
     return (
       finalClient.finalClientFirstName.trim() &&
@@ -145,7 +122,7 @@ export function NewOrderForm({ variants }: { variants: Variant[] }) {
     .join(" ");
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <div className="mb-6 flex gap-2">
         {[1, 2, 3, 4].map((s) => (
           <div
@@ -157,50 +134,20 @@ export function NewOrderForm({ variants }: { variants: Variant[] }) {
 
       {step === 1 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold">1. Productos</h2>
-          {variants.map((v) => {
-            const hint = getVariantOrderHint(getVariantKind(v.name));
-            const qty = getQty(v.id);
-            const priceFormula =
-              qty > 0 ? formatEstimatedPriceForUnits(v, qty) : null;
-            return (
-            <div
-              key={v.id}
-              className="rounded-xl border border-stone-200 bg-white p-4"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">{v.product.name}</p>
-                  <p className="text-sm text-stone-500 mt-0.5">
-                    {v.name} — {formatVariantPrice(v)}
-                  </p>
-                  {hint && (
-                    <p className="text-xs text-stone-400 mt-2">{hint}</p>
-                  )}
-                  {priceFormula && (
-                    <p className="text-xs font-medium text-stone-600 mt-1">
-                      {priceFormula}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-stone-500">unid.</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="1"
-                    value={getQty(v.id) || ""}
-                    onChange={(e) =>
-                      setQty(v.id, parseInt(e.target.value, 10) || 0)
-                    }
-                    className="w-20 rounded-lg border border-stone-300 px-2 py-1.5 text-center"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            </div>
-            );
-          })}
+          <div>
+            <h2 className="text-lg font-semibold">1. Productos y servicios</h2>
+            <p className="text-sm text-stone-500 mt-1">
+              Elija cantidades por producto. Los servicios de loncheado y plateado
+              están agrupados bajo cada referencia.
+            </p>
+          </div>
+
+          <OrderProductPicker
+            variants={variants}
+            getQty={getQty}
+            setQty={setQty}
+          />
+
           <button
             type="button"
             onClick={() => {
@@ -405,75 +352,13 @@ export function NewOrderForm({ variants }: { variants: Variant[] }) {
                 : `${finalClient.finalClientStreet}, ${finalClient.finalClientPostalCode} ${finalClient.finalClientCity}`}
             </p>
           </div>
-          <div className="rounded-xl border border-stone-200 bg-white p-4 space-y-3">
-            {estimate.lines.map((line) => (
-              <div key={line.key} className="border-b border-stone-100 pb-3 space-y-1">
-                <p className="text-sm font-medium text-stone-900">
-                  {line.productName} — {line.variantName}{" "}
-                  <span className="font-normal text-stone-500">
-                    ({line.quantityLabel})
-                  </span>
-                </p>
-                {line.priceFormula && (
-                  <p className="text-xs text-stone-500">{line.priceFormula}</p>
-                )}
-                <div className="grid gap-0.5 text-xs text-stone-600 sm:text-sm">
-                  <div className="flex justify-between">
-                    <span>sin IVA</span>
-                    <span>{formatEuros(line.subtotalCents)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>IVA ({formatVatPercentLabel(line.vatRate)})</span>
-                    <span>{formatEuros(line.vatCents)}</span>
-                  </div>
-                  <div className="flex justify-between font-medium text-stone-900 pt-0.5">
-                    <span>con IVA</span>
-                    <span>{formatEuros(line.totalWithVatCents)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <div className="space-y-1 text-sm pt-1 border-t border-stone-200">
-              {sortedVatRates.map((rate) => (
-                <div
-                  key={`base-${rate}`}
-                  className="flex justify-between text-stone-600 pl-2"
-                >
-                  <span>Base imponible ({formatVatPercentLabel(rate)})</span>
-                  <span>{formatEuros(subtotalByRate.get(rate) ?? 0)}</span>
-                </div>
-              ))}
-              <div className="flex justify-between font-medium text-stone-900 pt-0.5">
-                <span>Subtotal (sin IVA)</span>
-                <span>{formatEuros(estimate.subtotalCents)}</span>
-              </div>
-              {sortedVatRates.map((rate) => (
-                <div
-                  key={`vat-${rate}`}
-                  className="flex justify-between text-stone-600 pl-2"
-                >
-                  <span>IVA ({formatVatPercentLabel(rate)})</span>
-                  <span>{formatEuros(vatByRate.get(rate) ?? 0)}</span>
-                </div>
-              ))}
-              <div className="flex justify-between font-medium text-stone-900">
-                <span>Total IVA</span>
-                <span>{formatEuros(estimate.vatCents)}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-stone-900 pt-1 border-t border-stone-100">
-                <span>Subtotal (con IVA)</span>
-                <span>{formatEuros(estimate.subtotalWithVatCents)}</span>
-              </div>
-              <div className="flex justify-between text-stone-500">
-                <span>Envío estimado</span>
-                <span>{formatEuros(shipping)}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-stone-900 pt-1 border-t border-stone-200">
-                <span>Total estimado</span>
-                <span>{formatEuros(totalEstimate)}</span>
-              </div>
-            </div>
+          <div className="rounded-xl border border-stone-200 bg-white p-4">
+            <OrderFinancialSummary
+              lines={estimate.lines}
+              shippingCostCents={shipping}
+              shippingLabel="Gastos de envío (estimado)"
+              isEstimate
+            />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

@@ -22,7 +22,9 @@ function OrderSection({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-stone-800">{title}</h2>
+      <h2 className="text-lg font-semibold text-stone-800">
+        {title} ({orders.length})
+      </h2>
       {orders.length === 0 ? (
         <p className="text-sm text-stone-500">{emptyMessage}</p>
       ) : (

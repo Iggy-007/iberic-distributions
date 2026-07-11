@@ -3,15 +3,18 @@ import { getOrderStats } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 import { OrderCard } from "@/components/OrderCard";
 import { orderInclude } from "@/lib/orders";
+import { CatalogNotificationsList } from "@/components/CatalogNotificationsList";
+import { getUnreadCatalogNotificationCount } from "@/lib/catalog-notifications";
 
 export default async function AdminDashboardPage() {
-  const [stats, recentOrders] = await Promise.all([
+  const [stats, recentOrders, catalogUnread] = await Promise.all([
     getOrderStats(),
     prisma.order.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
       include: orderInclude,
     }),
+    getUnreadCatalogNotificationCount(),
   ]);
 
   return (
@@ -21,7 +24,7 @@ export default async function AdminDashboardPage() {
         <p className="text-stone-500 mt-1">Vista general de Iberic Distributions</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-stone-200 bg-white p-5">
           <p className="text-sm text-stone-500">Pedidos abiertos</p>
           <p className="text-3xl font-bold text-wine mt-1">{stats.open}</p>
@@ -34,7 +37,17 @@ export default async function AdminDashboardPage() {
           <p className="text-sm text-stone-500">Enviados esta semana</p>
           <p className="text-3xl font-bold text-wine mt-1">{stats.shippedWeek}</p>
         </div>
+        <Link
+          href="/admin/products"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-5 hover:border-amber-300 transition"
+        >
+          <p className="text-sm text-stone-600">Cambios en catálogo</p>
+          <p className="text-3xl font-bold text-wine mt-1">{catalogUnread}</p>
+          <p className="text-xs text-stone-500 mt-1">sin leer</p>
+        </Link>
       </div>
+
+      <CatalogNotificationsList />
 
       <div className="flex flex-wrap gap-3">
         <Link
@@ -47,7 +60,7 @@ export default async function AdminDashboardPage() {
           href="/admin/products"
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-white"
         >
-          Productos y precios
+          Catálogo
         </Link>
         <Link
           href="/admin/orders"

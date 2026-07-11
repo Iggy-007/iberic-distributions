@@ -5,7 +5,6 @@ import { OrderTimeline } from "@/components/OrderTimeline";
 import { OrderStatusActions } from "@/components/OrderStatusActions";
 import { CancelOrderButton } from "@/components/CancelOrderButton";
 import { formatEuros } from "@/lib/shipping";
-import { formatVatPercentLabel } from "@/lib/pricing";
 import {
   buildStoredOrderEstimate,
   type StoredOrderLine,
@@ -18,6 +17,8 @@ import { CarrierInfoBlock } from "@/components/CarrierInfoBlock";
 import { getTrackingUrl } from "@/lib/utils";
 import { ProviderLineActualsEditor } from "@/components/ProviderLineActualsEditor";
 import { ProviderReactivateOrderButton } from "@/components/ProviderReactivateOrderButton";
+import { ProductGalvanReference } from "@/components/ProductGalvanReference";
+import { OrderFinancialSummary } from "@/components/OrderFinancialSummary";
 import { toKanbanOrder } from "@/lib/kanban-types";
 import {
   getOrderMissingActualsMessage,
@@ -45,24 +46,6 @@ export function OrderDetailView({
   const hasEstimates = orderHasEstimatedLines(order.lines);
   const estimate = buildStoredOrderEstimate(storedLines);
 
-  const subtotalByRate = estimate.lines.reduce((acc, line) => {
-    acc.set(
-      line.vatRate,
-      (acc.get(line.vatRate) ?? 0) + line.subtotalCents
-    );
-    return acc;
-  }, new Map<number, number>());
-
-  const vatByRate = estimate.lines.reduce((acc, line) => {
-    acc.set(line.vatRate, (acc.get(line.vatRate) ?? 0) + line.vatCents);
-    return acc;
-  }, new Map<number, number>());
-
-  const sortedVatRates = [
-    ...new Set(estimate.lines.map((l) => l.vatRate)),
-  ].sort((a, b) => a - b);
-
-  const totalCents = estimate.subtotalWithVatCents + order.shippingCostCents;
   const missingActualsMessage =
     role === Role.PROVIDER && !orderHasRequiredActuals(order.lines)
       ? getOrderMissingActualsMessage(order.lines)
@@ -87,7 +70,7 @@ export function OrderDetailView({
         </div>
         <div className="flex flex-col items-end gap-3">
           <StatusBadge status={order.status} />
-          {role === Role.CLIENT && (
+          {(role === Role.CLIENT || role === Role.PROVIDER) && (
             <CancelOrderButton orderId={order.id} status={order.status} />
           )}
         </div>
@@ -121,105 +104,44 @@ export function OrderDetailView({
               Importes estimados según unidades pedidas y peso orientativo.
             </p>
           )}
-          <ul className="space-y-3">
-            {estimate.lines.map((line) => {
+          <OrderFinancialSummary
+            lines={estimate.lines}
+            shippingCostCents={order.shippingCostCents}
+            shippingLabel={`Gastos de envío (${
+              order.shippingType === "NATIONAL" ? "nacional" : "internacional"
+            })`}
+            isEstimate={hasEstimates}
+            renderLineExtra={(line) => {
               const orderLine = order.lines.find((l) => l.id === line.key);
+              if (!orderLine) return null;
+
               return (
-              <li key={line.key} className="border-b border-stone-100 pb-3">
-                <p className="text-sm font-medium text-stone-900">
-                  {line.productName} — {line.variantName}{" "}
-                  <span className="font-normal text-stone-500">
-                    ({line.quantityLabel})
-                  </span>
-                </p>
-                {line.priceFormula && (
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    {line.priceFormula}
-                  </p>
-                )}
-                {orderLine?.actualWeightKg != null && (
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    Peso real: {orderLine.actualWeightKg} kg
-                  </p>
-                )}
-                {orderLine?.actualPieceCount != null && (
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    {getPiecesLabel(line.variantName) ?? "Unidades reales"}:{" "}
-                    {orderLine.actualPieceCount}
-                  </p>
-                )}
-                {(role === Role.PROVIDER || role === Role.ADMIN) &&
-                  orderLine?.galvanInternalId && (
-                    <p className="text-xs text-stone-600 mt-0.5">
-                      ID interno Galvan: {orderLine.galvanInternalId}
+                <div className="mt-1 space-y-0.5 text-xs text-stone-600">
+                  <ProductGalvanReference
+                    reference={orderLine.variant.product.galvanReference}
+                    compact
+                  />
+                  {orderLine.actualWeightKg != null && (
+                    <p>Peso real: {orderLine.actualWeightKg} kg</p>
+                  )}
+                  {orderLine.actualPieceCount != null && (
+                    <p>
+                      {getPiecesLabel(
+                        line.variantName,
+                        line.productName,
+                        orderLine.variant.presentation
+                      ) ?? "Unidades reales"}
+                      : {orderLine.actualPieceCount}
                     </p>
                   )}
-                <div className="mt-1 grid gap-0.5 text-xs text-stone-600 sm:text-sm">
-                  <div className="flex justify-between">
-                    <span>sin IVA</span>
-                    <span>{formatEuros(line.subtotalCents)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>IVA ({formatVatPercentLabel(line.vatRate)})</span>
-                    <span>{formatEuros(line.vatCents)}</span>
-                  </div>
-                  <div className="flex justify-between font-medium text-stone-900">
-                    <span>con IVA</span>
-                    <span>{formatEuros(line.totalWithVatCents)}</span>
-                  </div>
+                  {(role === Role.PROVIDER || role === Role.ADMIN) &&
+                    orderLine.galvanInternalId && (
+                      <p>ID interno Galvan: {orderLine.galvanInternalId}</p>
+                    )}
                 </div>
-              </li>
               );
-            })}
-          </ul>
-
-          <div className="mt-4 space-y-1 text-sm pt-2 border-t border-stone-200">
-            {hasEstimates &&
-              sortedVatRates.map((rate) => (
-                <div
-                  key={`base-${rate}`}
-                  className="flex justify-between text-stone-600 pl-2"
-                >
-                  <span>Base imponible ({formatVatPercentLabel(rate)})</span>
-                  <span>{formatEuros(subtotalByRate.get(rate) ?? 0)}</span>
-                </div>
-              ))}
-            <div className="flex justify-between text-stone-600">
-              <span>Subtotal (sin IVA)</span>
-              <span>{formatEuros(estimate.subtotalCents)}</span>
-            </div>
-            {hasEstimates &&
-              sortedVatRates.map((rate) => (
-                <div
-                  key={`vat-${rate}`}
-                  className="flex justify-between text-stone-600 pl-2"
-                >
-                  <span>IVA ({formatVatPercentLabel(rate)})</span>
-                  <span>{formatEuros(vatByRate.get(rate) ?? 0)}</span>
-                </div>
-              ))}
-            <div className="flex justify-between text-stone-600">
-              <span>Total IVA</span>
-              <span>{formatEuros(estimate.vatCents)}</span>
-            </div>
-            <div className="flex justify-between font-medium text-stone-900 pt-1 border-t border-stone-100">
-              <span>Subtotal (con IVA)</span>
-              <span>{formatEuros(estimate.subtotalWithVatCents)}</span>
-            </div>
-            <div className="flex justify-between text-stone-600">
-              <span>
-                Envío{" "}
-                {order.shippingType === "NATIONAL"
-                  ? "nacional"
-                  : "internacional"}
-              </span>
-              <span>{formatEuros(order.shippingCostCents)}</span>
-            </div>
-            <div className="flex justify-between font-semibold text-stone-900 pt-2 border-t">
-              <span>{hasEstimates ? "Total estimado" : "Total"}</span>
-              <span>{formatEuros(totalCents)}</span>
-            </div>
-          </div>
+            }}
+          />
         </section>
 
         <section className="rounded-xl border border-stone-200 bg-white p-5">
@@ -266,6 +188,7 @@ export function OrderDetailView({
               carrier={{
                 carrierCompany: order.carrierCompany,
                 carrierTrackingNumber: order.carrierTrackingNumber,
+                carrierTrackingUrl: order.carrierTrackingUrl,
                 carrierPhone: order.carrierPhone,
               }}
             />
@@ -286,6 +209,7 @@ export function OrderDetailView({
                 carrier={{
                   carrierCompany: order.carrierCompany,
                   carrierTrackingNumber: order.carrierTrackingNumber,
+                  carrierTrackingUrl: order.carrierTrackingUrl,
                   carrierPhone: order.carrierPhone,
                 }}
               />

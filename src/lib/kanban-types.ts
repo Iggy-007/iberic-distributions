@@ -16,6 +16,7 @@ export interface KanbanOrderLine {
     priceType: PriceType;
     priceCents: number;
     vatRate: number;
+    presentation?: import("@prisma/client").VariantPresentation;
     product: { name: string };
   };
 }
@@ -28,6 +29,7 @@ export interface KanbanOrder {
   shippingCostCents: number;
   carrierCompany: string | null;
   carrierTrackingNumber: string | null;
+  carrierTrackingUrl: string | null;
   carrierPhone: string | null;
   createdAt: string;
   clientOrg: { name: string };
@@ -42,6 +44,7 @@ export function toKanbanOrder(order: {
   shippingCostCents: number;
   carrierCompany: string | null;
   carrierTrackingNumber: string | null;
+  carrierTrackingUrl: string | null;
   carrierPhone: string | null;
   createdAt: Date;
   clientOrg: { name: string };
@@ -72,6 +75,7 @@ export function toKanbanOrder(order: {
     shippingCostCents: order.shippingCostCents,
     carrierCompany: order.carrierCompany,
     carrierTrackingNumber: order.carrierTrackingNumber,
+    carrierTrackingUrl: order.carrierTrackingUrl,
     carrierPhone: order.carrierPhone,
     createdAt: order.createdAt.toISOString(),
     clientOrg: { name: order.clientOrg.name },

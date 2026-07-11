@@ -41,6 +41,7 @@ export function ProviderShipmentPanel({
             initial={{
               carrierCompany: order.carrierCompany,
               carrierTrackingNumber: order.carrierTrackingNumber,
+              carrierTrackingUrl: order.carrierTrackingUrl,
               carrierPhone: order.carrierPhone,
             }}
             onSuccess={onShipped}

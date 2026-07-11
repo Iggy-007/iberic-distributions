@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logUserActivity } from "@/lib/user-activity";
 import { getOrderById } from "@/lib/orders";
 import {
   calcLineTotalFromActuals,
@@ -64,7 +65,11 @@ export async function PATCH(
       );
     }
 
-    const fields = getLineActualFields(line.variant.name);
+    const fields = getLineActualFields(
+      line.variant.name,
+      line.variant.product.name,
+      line.variant.presentation
+    );
     if (fields.weight && update.actualWeightKg == null) {
       return NextResponse.json(
         { error: `Peso real del jamón obligatorio para ${line.variant.name}` },
@@ -138,6 +143,15 @@ export async function PATCH(
         clientOrg: true,
       },
     });
+  });
+
+  await logUserActivity({
+    userId: session.user.id,
+    action: "ORDER_LINE_UPDATED",
+    summary: `Actualizó datos reales — pedido #${order.orderNumber}`,
+    detail: `${parsed.data.lines.length} línea(s)`,
+    entityType: "order",
+    entityId: order.id,
   });
 
   return NextResponse.json(updated);

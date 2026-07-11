@@ -87,13 +87,6 @@ export default function LoginPage() {
               {loading ? "Entrando..." : "Iniciar sesión"}
             </button>
           </form>
-
-          <div className="mt-6 rounded-lg bg-stone-50 p-4 text-xs text-stone-500">
-            <p className="font-medium text-stone-700 mb-2">Usuarios de prueba:</p>
-            <p>Admin: admin@ibericdistributions.com / Admin123!</p>
-            <p>Cliente (Manolo): manolo@saketeamfood.com / Manolo123!</p>
-            <p>Proveedor (Jose Juan): josejuan@galvan.es / Galvan123!</p>
-          </div>
         </div>
       </div>
     </div>

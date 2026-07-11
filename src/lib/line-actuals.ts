@@ -1,4 +1,6 @@
+import type { VariantPresentation } from "@prisma/client";
 import {
+  LOMITO_KG_ESTIMATE,
   getVariantKind,
   inferStoredLineUnits,
   resolveLineVatRate,
@@ -20,6 +22,8 @@ export interface LineForActuals {
     name: string;
     unitLabel: string;
     vatRate: number;
+    presentation?: VariantPresentation;
+    product?: { name: string };
   };
 }
 
@@ -35,8 +39,12 @@ export const HAM_WEIGHT_LABEL = "Peso real del jamón (kg)";
 export const PACKAGES_LABEL = "Paquetes reales";
 export const PLATES_LABEL = "Platos reales";
 
-export function getLineActualFields(variantName: string): LineActualFields {
-  const kind = getVariantKind(variantName);
+export function getLineActualFields(
+  variantName: string,
+  productName?: string,
+  presentation?: VariantPresentation | null
+): LineActualFields {
+  const kind = getVariantKind(variantName, productName, presentation);
   switch (kind) {
     case "whole_ham":
     case "lomito":
@@ -49,13 +57,21 @@ export function getLineActualFields(variantName: string): LineActualFields {
   }
 }
 
-export function lineNeedsActuals(variantName: string): boolean {
-  const fields = getLineActualFields(variantName);
+export function lineNeedsActuals(
+  variantName: string,
+  productName?: string,
+  presentation?: import("@prisma/client").VariantPresentation | null
+): boolean {
+  const fields = getLineActualFields(variantName, productName, presentation);
   return fields.weight || fields.pieces;
 }
 
-export function getPiecesLabel(variantName: string): string | null {
-  const kind = getVariantKind(variantName);
+export function getPiecesLabel(
+  variantName: string,
+  productName?: string,
+  presentation?: VariantPresentation | null
+): string | null {
+  const kind = getVariantKind(variantName, productName, presentation);
   if (kind === "ham_loncheado") return PACKAGES_LABEL;
   if (kind === "ham_plateado") return PLATES_LABEL;
   return null;
@@ -65,9 +81,10 @@ export function getPiecesLabel(variantName: string): string | null {
 export type LineActualRequirement = "weight" | "pieces" | "weight_and_pieces" | null;
 
 export function getLineActualRequirement(
-  variantName: string
+  variantName: string,
+  productName?: string
 ): LineActualRequirement {
-  const fields = getLineActualFields(variantName);
+  const fields = getLineActualFields(variantName, productName);
   if (fields.weight && fields.pieces) return "weight_and_pieces";
   if (fields.weight) return "weight";
   if (fields.pieces) return "pieces";
@@ -99,7 +116,13 @@ export function showGalvanInternalIdField(
 }
 
 export function lineHasRequiredActuals(line: LineForActuals): boolean {
-  const fields = getLineActualFields(line.variant.name);
+  const productName = line.variant.product?.name;
+  const presentation = line.variant.presentation;
+  const fields = getLineActualFields(
+    line.variant.name,
+    productName,
+    presentation
+  );
   if (fields.weight) {
     if (line.actualWeightKg == null || line.actualWeightKg <= 0) return false;
   }
@@ -114,13 +137,23 @@ export function orderHasRequiredActuals(lines: LineForActuals[]): boolean {
 }
 
 export function getLineMissingActualsLabels(line: LineForActuals): string[] {
-  const fields = getLineActualFields(line.variant.name);
+  const productName = line.variant.product?.name;
+  const presentation = line.variant.presentation;
+  const fields = getLineActualFields(
+    line.variant.name,
+    productName,
+    presentation
+  );
   const missing: string[] = [];
   if (fields.weight && (line.actualWeightKg == null || line.actualWeightKg <= 0)) {
     missing.push(HAM_WEIGHT_LABEL);
   }
   if (fields.pieces) {
-    const piecesLabel = getPiecesLabel(line.variant.name);
+    const piecesLabel = getPiecesLabel(
+      line.variant.name,
+      productName,
+      presentation
+    );
     if (
       piecesLabel &&
       (line.actualPieceCount == null || line.actualPieceCount <= 0)
@@ -154,7 +187,13 @@ export function validateLineDraft(
   line: LineForActuals,
   draft: LineActualDraft
 ): string | null {
-  const fields = getLineActualFields(line.variant.name);
+  const productName = line.variant.product?.name;
+  const presentation = line.variant.presentation;
+  const fields = getLineActualFields(
+    line.variant.name,
+    productName,
+    presentation
+  );
   if (fields.weight) {
     const val = parseFloat(draft.actualWeightKg);
     if (!Number.isFinite(val) || val <= 0) {
@@ -163,7 +202,9 @@ export function validateLineDraft(
   }
   if (fields.pieces) {
     const val = parseFloat(draft.actualPieceCount);
-    const label = getPiecesLabel(line.variant.name) ?? "unidades";
+    const label =
+      getPiecesLabel(line.variant.name, productName, presentation) ??
+      "unidades";
     if (!Number.isFinite(val) || val <= 0) {
       return `Indique ${label.toLowerCase()} para ${line.variant.name}`;
     }
@@ -175,7 +216,13 @@ export function buildLineActualPayload(
   line: LineForActuals,
   draft: LineActualDraft & { galvanInternalId: string }
 ) {
-  const fields = getLineActualFields(line.variant.name);
+  const productName = line.variant.product?.name;
+  const presentation = line.variant.presentation;
+  const fields = getLineActualFields(
+    line.variant.name,
+    productName,
+    presentation
+  );
   return {
     actualWeightKg: fields.weight
       ? parseFloat(draft.actualWeightKg)
@@ -193,7 +240,11 @@ export function buildLineActualPayload(
 }
 
 export function calcLineTotalFromActuals(line: LineForActuals): number {
-  const kind = getVariantKind(line.variant.name);
+  const kind = getVariantKind(
+    line.variant.name,
+    line.variant.product?.name,
+    line.variant.presentation
+  );
   switch (kind) {
     case "whole_ham":
     case "lomito":
@@ -211,7 +262,11 @@ export function formatLineOrderedSummary(line: LineForActuals): string {
     quantity: line.quantity,
     variant: line.variant,
   });
-  const kind = getVariantKind(line.variant.name);
+  const kind = getVariantKind(
+    line.variant.name,
+    line.variant.product?.name,
+    line.variant.presentation
+  );
 
   switch (kind) {
     case "whole_ham":
@@ -221,7 +276,7 @@ export function formatLineOrderedSummary(line: LineForActuals): string {
     case "ham_plateado":
       return `${units} unid. (~${units * 30} platos estimados)`;
     case "lomito":
-      return `${units} unid. (~${units * 1.5} kg estimados)`;
+      return `${units} unid. (~${Math.round(units * LOMITO_KG_ESTIMATE * 1000)} g estimados)`;
     default:
       return `${Math.round(line.quantity)} ${line.variant.unitLabel}`;
   }
@@ -232,7 +287,12 @@ export function buildLineVatInputs(
 ) {
   return lines.map((line) => ({
     lineTotalCents: calcLineTotalFromActuals(line),
-    vatRate: resolveLineVatRate(line.variant.name, line.variant.vatRate),
+    vatRate: resolveLineVatRate(
+      line.variant.name,
+      line.variant.vatRate,
+      line.variant.product?.name,
+      line.variant.presentation
+    ),
   }));
 }
 

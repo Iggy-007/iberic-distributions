@@ -37,6 +37,12 @@ export function OrderTimeline({
             {cancelledEvent.createdBy &&
               ` — ${cancelledEvent.createdBy.name}`}
           </p>
+          {cancelledEvent.note && (
+            <p className="text-sm text-stone-700 mt-2">
+              <span className="text-stone-500">Justificación: </span>
+              {cancelledEvent.note}
+            </p>
+          )}
         </div>
         <ol className="relative border-l border-stone-200 ml-3 space-y-6 opacity-60">
           {STATUS_ORDER.map((status) => {

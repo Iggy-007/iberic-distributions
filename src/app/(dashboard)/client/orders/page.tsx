@@ -1,15 +1,38 @@
-import { getRequiredSession } from "@/lib/auth";
-import { getOrdersForUser } from "@/lib/orders";
-import { GroupedOrdersList } from "@/components/GroupedOrdersList";
 import Link from "next/link";
+import { getRequiredSession } from "@/lib/auth";
+import { OrdersListShell } from "@/components/OrdersListShell";
+import {
+  countHistoryOrders,
+  countOperationalOrders,
+  fetchHistoryOrders,
+  fetchOperationalOrders,
+  getOrderListRoleFilter,
+  parseOrderListSearchParams,
+} from "@/lib/order-list";
 
-export default async function ClientOrdersPage() {
+export default async function ClientOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getRequiredSession();
-  const orders = await getOrdersForUser(
-    session.user.id,
+  const params = parseOrderListSearchParams(await searchParams);
+  const orgFilter = getOrderListRoleFilter(
     session.user.role,
     session.user.organizationId
   );
+
+  const [operationalOrders, historyResult, operationalTotal, historyTotal] =
+    await Promise.all([
+      params.view === "operational"
+        ? fetchOperationalOrders(params, orgFilter)
+        : Promise.resolve([]),
+      params.view === "history"
+        ? fetchHistoryOrders(params, orgFilter)
+        : Promise.resolve({ orders: [], total: 0, totalPages: 1 }),
+      countOperationalOrders(params, orgFilter),
+      countHistoryOrders(params, orgFilter),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -22,8 +45,13 @@ export default async function ClientOrdersPage() {
           Nuevo pedido
         </Link>
       </div>
-      <GroupedOrdersList
-        orders={orders}
+      <OrdersListShell
+        params={params}
+        operationalOrders={operationalOrders}
+        historyOrders={historyResult.orders}
+        historyTotal={historyTotal}
+        historyTotalPages={historyResult.totalPages}
+        operationalTotal={operationalTotal}
         hrefPrefix="/client/orders"
         showCancel
       />

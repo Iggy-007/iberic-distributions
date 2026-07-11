@@ -9,9 +9,11 @@ import { ROLE_LABELS } from "@/lib/constants";
 export function AppHeader({
   session: initialSession,
   nav,
+  navEnd,
 }: {
   session?: Session;
   nav?: React.ReactNode;
+  navEnd?: React.ReactNode;
 }) {
   const { data: clientSession } = useSession();
   const session = clientSession ?? initialSession;
@@ -54,9 +56,10 @@ export function AppHeader({
           )}
         </div>
 
-        {nav && (
-          <nav className="-mx-4 flex gap-0 overflow-x-auto border-t border-stone-100 px-4">
-            {nav}
+        {(nav || navEnd) && (
+          <nav className="-mx-4 flex items-center justify-between gap-4 overflow-x-auto border-t border-stone-100 px-4">
+            <div className="flex gap-0">{nav}</div>
+            {navEnd && <div className="ml-auto flex shrink-0 gap-0">{navEnd}</div>}
           </nav>
         )}
       </div>

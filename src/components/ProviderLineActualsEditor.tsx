@@ -30,7 +30,13 @@ export function ProviderLineActualsEditor({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const needsData = lines.some((line) => lineNeedsActuals(line.variant.name));
+  const needsData = lines.some((line) =>
+    lineNeedsActuals(
+      line.variant.name,
+      line.variant.product.name,
+      line.variant.presentation
+    )
+  );
 
   if (!needsData) return null;
 
@@ -51,7 +57,14 @@ export function ProviderLineActualsEditor({
     setSuccess(false);
 
     for (const line of lines) {
-      if (!lineNeedsActuals(line.variant.name)) continue;
+      if (
+        !lineNeedsActuals(
+          line.variant.name,
+          line.variant.product.name,
+          line.variant.presentation
+        )
+      )
+        continue;
       const draft = drafts.find((d) => d.lineId === line.id)!;
       const validationError = validateLineDraft(line, draft);
       if (validationError) {
@@ -63,7 +76,13 @@ export function ProviderLineActualsEditor({
 
     const payload = {
       lines: lines
-        .filter((line) => lineNeedsActuals(line.variant.name))
+        .filter((line) =>
+          lineNeedsActuals(
+            line.variant.name,
+            line.variant.product.name,
+            line.variant.presentation
+          )
+        )
         .map((line) => {
           const draft = drafts.find((d) => d.lineId === line.id)!;
           const built = buildLineActualPayload(line, draft);

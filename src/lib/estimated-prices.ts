@@ -5,6 +5,7 @@ import {
   HAM_LONCHEADO_PACKAGES_PER_UNIT,
   HAM_PLATEADO_PLATES_PER_UNIT,
   LOMITO_KG_ESTIMATE,
+  formatLomitoWeightLabel,
   WHOLE_HAM_KG_ESTIMATE,
   getVariantKind,
   inferStoredLineUnits,
@@ -18,6 +19,8 @@ export interface VariantPriceInput {
   priceType: PriceType;
   vatRate: number;
   unitLabel: string;
+  productName?: string;
+  presentation?: import("@prisma/client").VariantPresentation;
 }
 
 function formatKg(kg: number): string {
@@ -54,7 +57,11 @@ export function formatEstimatedPriceForUnits(
 ): string | null {
   if (units <= 0) return null;
 
-  const kind = getVariantKind(variant.name);
+  const kind = getVariantKind(
+    variant.name,
+    variant.productName,
+    variant.presentation
+  );
 
   switch (kind) {
     case "whole_ham": {
@@ -103,8 +110,8 @@ export function formatEstimatedPriceForUnits(
       const kg = LOMITO_KG_ESTIMATE * units;
       const kgLabel =
         units === 1
-          ? `${formatKg(LOMITO_KG_ESTIMATE)} kg`
-          : `${formatKg(LOMITO_KG_ESTIMATE)} kg × ${units} unid.`;
+          ? formatLomitoWeightLabel()
+          : `${formatLomitoWeightLabel()} × ${units} unid.`;
       return formatEstimatedPriceFormula(
         variant.priceCents,
         variant.vatRate,
@@ -129,7 +136,11 @@ export function calcEstimatedTotalForUnits(
   variant: VariantPriceInput,
   units: number
 ): number | null {
-  const kind = getVariantKind(variant.name);
+  const kind = getVariantKind(
+    variant.name,
+    variant.productName,
+    variant.presentation
+  );
   if (units <= 0) return null;
 
   switch (kind) {
@@ -172,17 +183,31 @@ export function formatOrderLineEstimatedPrice(line: {
   vatCents: number;
   totalWithVatCents: number;
 } | null {
-  const kind = getVariantKind(line.variant.name);
+  const kind = getVariantKind(
+    line.variant.name,
+    line.variant.productName,
+    line.variant.presentation
+  );
   if (kind === "other") return null;
 
   const units = inferStoredLineUnits({
     quantity: line.quantity,
-    variant: line.variant,
+    variant: {
+      ...line.variant,
+      product: line.variant.productName
+        ? { name: line.variant.productName }
+        : undefined,
+    },
   });
   const formula = formatEstimatedPriceForUnits(line.variant, units);
   if (!formula) return null;
 
-  const vatRate = resolveLineVatRate(line.variant.name, line.variant.vatRate);
+  const vatRate = resolveLineVatRate(
+    line.variant.name,
+    line.variant.vatRate,
+    line.variant.productName,
+    line.variant.presentation
+  );
   const vatCents = calcVatCents(line.lineTotalCents, vatRate);
 
   return {
@@ -194,7 +219,20 @@ export function formatOrderLineEstimatedPrice(line: {
 }
 
 export function orderHasEstimatedLines(
-  lines: { variant: { name: string } }[]
+  lines: {
+    variant: {
+      name: string;
+      product?: { name: string };
+      presentation?: import("@prisma/client").VariantPresentation;
+    };
+  }[]
 ): boolean {
-  return lines.some((l) => getVariantKind(l.variant.name) !== "other");
+  return lines.some(
+    (line) =>
+      getVariantKind(
+        line.variant.name,
+        line.variant.product?.name,
+        line.variant.presentation
+      ) !== "other"
+  );
 }

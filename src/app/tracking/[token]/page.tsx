@@ -3,22 +3,23 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { OrderFinancialSummary } from "@/components/OrderFinancialSummary";
+import type { EstimateLineItem } from "@/lib/order-estimates";
 
 interface TrackingData {
   orderNumber: string;
   statusLabel: string;
   destinationCity: string | null;
   destinationCountry: string;
-  products: { name: string; quantity: number }[];
-  subtotal: string;
-  vat: string;
-  vatLabel: string;
-  shipping: string;
-  total: string;
+  financial: {
+    lines: EstimateLineItem[];
+    shippingCostCents: number;
+  };
   timeline: { label: string; date: string }[];
   carrier: {
     company: string | null;
     trackingNumber: string | null;
+    trackingUrl: string | null;
     phone: string | null;
   } | null;
 }
@@ -89,6 +90,19 @@ export default function TrackingPage() {
                     </span>
                   </p>
                 )}
+                {data.carrier.trackingUrl && (
+                  <p className="mt-1">
+                    <span className="text-stone-500">Seguimiento online: </span>
+                    <a
+                      href={data.carrier.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-wine hover:underline break-all"
+                    >
+                      Ver envío en la web del transportista
+                    </a>
+                  </p>
+                )}
                 {data.carrier.phone && (
                   <p className="mt-1">
                     <span className="text-stone-500">Teléfono: </span>
@@ -99,32 +113,11 @@ export default function TrackingPage() {
             )}
 
             <div>
-              <h2 className="font-medium mb-2">Productos</h2>
-              <ul className="text-sm space-y-1">
-                {data.products.map((p, i) => (
-                  <li key={i}>
-                    {p.name} x{p.quantity}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 space-y-1 text-sm">
-                <div className="flex justify-between text-stone-600">
-                  <span>Subtotal (sin IVA)</span>
-                  <span>{data.subtotal}</span>
-                </div>
-                <div className="flex justify-between text-stone-600">
-                  <span>{data.vatLabel}</span>
-                  <span>{data.vat}</span>
-                </div>
-                <div className="flex justify-between text-stone-600">
-                  <span>Envío</span>
-                  <span>{data.shipping}</span>
-                </div>
-                <div className="flex justify-between font-medium pt-1 border-t">
-                  <span>Total</span>
-                  <span>{data.total}</span>
-                </div>
-              </div>
+              <h2 className="font-medium mb-3">Importe del pedido</h2>
+              <OrderFinancialSummary
+                lines={data.financial.lines}
+                shippingCostCents={data.financial.shippingCostCents}
+              />
             </div>
 
             <div>

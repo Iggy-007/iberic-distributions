@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ROLE_LABELS } from "@/lib/constants";
+import { UserActivityPanel } from "@/components/UserActivityPanel";
+import type { ActivityTimelineItem } from "@/lib/user-activity";
 
 interface User {
   id: string;
@@ -12,10 +14,20 @@ interface User {
   organization?: { name: string } | null;
 }
 
+async function parseJsonResponse(res: Response): Promise<{ error?: string }> {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
+
 export function AdminUsersEditor({
   initialUsers,
+  currentUserId,
 }: {
   initialUsers: User[];
+  currentUserId: string;
 }) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [showForm, setShowForm] = useState(false);
@@ -32,6 +44,13 @@ export function AdminUsersEditor({
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activityUser, setActivityUser] = useState<User | null>(null);
+  const [activityItems, setActivityItems] = useState<ActivityTimelineItem[]>(
+    []
+  );
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   async function loadUsers() {
     const res = await fetch("/api/users");
@@ -84,6 +103,46 @@ export function AdminUsersEditor({
     loadUsers();
   }
 
+  async function openActivity(user: User) {
+    setActivityUser(user);
+    setActivityItems([]);
+    setActivityError("");
+    setActivityLoading(true);
+
+    const res = await fetch(`/api/users/${user.id}/activity`);
+    setActivityLoading(false);
+
+    if (!res.ok) {
+      const data = await parseJsonResponse(res);
+      setActivityError(data.error ?? "No se pudo cargar la actividad");
+      return;
+    }
+
+    const data = await res.json();
+    setActivityItems(data.items);
+  }
+
+  async function deleteUser(user: User) {
+    setDeleteError("");
+    const confirmed = window.confirm(
+      `¿Eliminar a ${user.name} (${user.email})? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    const res = await fetch(`/api/users/${user.id}`, { method: "DELETE" });
+
+    if (!res.ok) {
+      const data = await parseJsonResponse(res);
+      setDeleteError(data.error ?? "No se pudo eliminar el usuario");
+      return;
+    }
+
+    if (activityUser?.id === user.id) {
+      setActivityUser(null);
+    }
+    loadUsers();
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -95,6 +154,12 @@ export function AdminUsersEditor({
           {showForm ? "Cancelar" : "Crear usuario"}
         </button>
       </div>
+
+      {deleteError && (
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          {deleteError}
+        </p>
+      )}
 
       {showForm && (
         <form
@@ -141,18 +206,39 @@ export function AdminUsersEditor({
             }
             className="rounded-lg border border-stone-300 px-3 py-2 sm:col-span-2"
           />
-          <input
-            placeholder="Calle"
-            value={form.street}
-            onChange={(e) => setForm({ ...form, street: e.target.value })}
-            className="rounded-lg border border-stone-300 px-3 py-2"
-          />
-          <input
-            placeholder="Ciudad"
-            value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-            className="rounded-lg border border-stone-300 px-3 py-2"
-          />
+          {(form.role === "CLIENT" || form.role === "PROVIDER") && (
+            <>
+              <p className="text-sm font-medium text-stone-700 sm:col-span-2">
+                Dirección postal
+              </p>
+              <input
+                placeholder="Calle y número"
+                value={form.street}
+                onChange={(e) => setForm({ ...form, street: e.target.value })}
+                className="rounded-lg border border-stone-300 px-3 py-2 sm:col-span-2"
+              />
+              <input
+                placeholder="Código postal"
+                value={form.postalCode}
+                onChange={(e) =>
+                  setForm({ ...form, postalCode: e.target.value })
+                }
+                className="rounded-lg border border-stone-300 px-3 py-2"
+              />
+              <input
+                placeholder="Ciudad"
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                className="rounded-lg border border-stone-300 px-3 py-2"
+              />
+              <input
+                placeholder="País"
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+                className="rounded-lg border border-stone-300 px-3 py-2 sm:col-span-2"
+              />
+            </>
+          )}
           {error && (
             <p className="text-sm text-red-600 sm:col-span-2">{error}</p>
           )}
@@ -172,8 +258,8 @@ export function AdminUsersEditor({
           para restaurar los usuarios de prueba.
         </p>
       ) : (
-        <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-stone-200 bg-white overflow-x-auto">
+          <table className="w-full text-sm min-w-[48rem]">
             <thead className="bg-stone-50 text-left">
               <tr>
                 <th className="px-4 py-3">Nombre</th>
@@ -181,6 +267,7 @@ export function AdminUsersEditor({
                 <th className="px-4 py-3">Rol</th>
                 <th className="px-4 py-3">Organización</th>
                 <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -202,11 +289,41 @@ export function AdminUsersEditor({
                       {u.active ? "Activo" : "Inactivo"}
                     </button>
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openActivity(u)}
+                        className="text-xs text-wine hover:underline"
+                      >
+                        Actividad
+                      </button>
+                      {u.id !== currentUserId && (
+                        <button
+                          type="button"
+                          onClick={() => deleteUser(u)}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {activityUser && (
+        <UserActivityPanel
+          user={activityUser}
+          items={activityItems}
+          loading={activityLoading}
+          error={activityError}
+          onClose={() => setActivityUser(null)}
+        />
       )}
     </div>
   );
