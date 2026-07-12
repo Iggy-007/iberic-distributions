@@ -5,12 +5,15 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# Coolify may inject NODE_ENV=production at build time; devDependencies are required to build.
+ENV NODE_ENV=development
+RUN npm ci --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 RUN npx prisma generate
 RUN npm run build
 
