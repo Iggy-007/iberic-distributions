@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -58,6 +58,7 @@ model User {
   email          String        @unique
   passwordHash   String
   name           String
+  phone          String?
   role           Role
   active         Boolean       @default(true)
   organizationId String?
