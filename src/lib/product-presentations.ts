@@ -118,12 +118,12 @@ export const DEFAULT_CREATE_OFFERINGS: ProductOfferingsState = {
 };
 
 export function sortVariantsByPresentation<
-  T extends { presentation: VariantPresentation },
+  T extends { presentation?: VariantPresentation },
 >(variants: T[]): T[] {
   return [...variants].sort(
     (a, b) =>
-      PRESENTATION_ORDER.indexOf(a.presentation) -
-      PRESENTATION_ORDER.indexOf(b.presentation)
+      PRESENTATION_ORDER.indexOf(a.presentation ?? VariantPresentation.BASE) -
+      PRESENTATION_ORDER.indexOf(b.presentation ?? VariantPresentation.BASE)
   );
 }
 

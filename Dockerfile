@@ -5,9 +5,8 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-# Coolify may inject NODE_ENV=production at build time; devDependencies are required to build.
-ENV NODE_ENV=development
-RUN npm ci --ignore-scripts
+# Include devDependencies even if Coolify injects NODE_ENV=production at build time.
+RUN npm ci --ignore-scripts --include=dev
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules

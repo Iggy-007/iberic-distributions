@@ -52,10 +52,12 @@ function groupVariants(variants: OrderVariant[]): ProductGroup[] {
     byProduct.set(variant.product.id, group);
   }
 
-  return [...byProduct.values()].map((group) => ({
-    ...group,
-    services: sortVariantsByPresentation(group.services),
-  }));
+  return [...byProduct.values()].map(
+    (group): ProductGroup => ({
+      ...group,
+      services: sortVariantsByPresentation(group.services),
+    })
+  );
 }
 
 function VariantQuantityRow({
