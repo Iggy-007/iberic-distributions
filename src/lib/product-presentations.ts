@@ -40,6 +40,26 @@ export function isServicePresentation(
   return presentation !== VariantPresentation.BASE;
 }
 
+/** Etiqueta corta junto al campo de cantidad al crear pedidos */
+export function orderQuantityUnitShort(
+  presentation?: VariantPresentation | null
+): string {
+  return isServicePresentation(presentation ?? VariantPresentation.BASE)
+    ? "servicio"
+    : "unidad";
+}
+
+/** Cantidad abreviada en resúmenes de pedido (p. ej. "2 serv.") */
+export function formatOrderQuantityAbbrev(
+  count: number,
+  presentation?: VariantPresentation | null
+): string {
+  const short = isServicePresentation(presentation ?? VariantPresentation.BASE)
+    ? "serv."
+    : "unid.";
+  return `${count} ${short}`;
+}
+
 export function inferPresentationFromVariantName(
   name: string
 ): VariantPresentation {

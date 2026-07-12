@@ -29,8 +29,9 @@ Los precios en catálogo y pedidos muestran el importe **con IVA incluido**.
 |------|----------------------------------|
 | Jamón entero | 7–7,5 kg por unidad (se usa 7,5 kg) |
 | Lomito entero | **400 g** por unidad |
-| Loncheado (jamón o lomito) | ~30 paquetes por unidad pedida |
-| Plateado | ~30 platos por unidad pedida |
+| Loncheado (jamón) | ~**36 sobres de 100 g** por unidad pedida (referencia: jamón ~8 kg) |
+| Plateado (jamón) | ~**40 platos de 90 g** en atmósfera por unidad pedida (referencia: jamón ~8 kg) |
+| Loncheado (lomito) | precio por paquete (sin estimación por peso de pieza) |
 
 El cobro final de jamón y lomito enteros se ajusta al **peso real** registrado por el proveedor.
 

@@ -1,6 +1,9 @@
 import type { VariantPresentation } from "@prisma/client";
 import {
+  HAM_LONCHEADO_PACKAGES_PER_UNIT,
+  HAM_PLATEADO_PLATES_PER_UNIT,
   LOMITO_KG_ESTIMATE,
+  formatOrderedUnitsAbbrev,
   getVariantKind,
   inferStoredLineUnits,
   resolveLineVatRate,
@@ -272,9 +275,9 @@ export function formatLineOrderedSummary(line: LineForActuals): string {
     case "whole_ham":
       return `${units} unid. (estimado 7–7,5 kg c/u)`;
     case "ham_loncheado":
-      return `${units} unid. (~${units * 30} paquetes estimados)`;
+      return `${formatOrderedUnitsAbbrev(units, kind)} (~${units * HAM_LONCHEADO_PACKAGES_PER_UNIT} sobres estimados)`;
     case "ham_plateado":
-      return `${units} unid. (~${units * 30} platos estimados)`;
+      return `${formatOrderedUnitsAbbrev(units, kind)} (~${units * HAM_PLATEADO_PLATES_PER_UNIT} platos estimados)`;
     case "lomito":
       return `${units} unid. (~${Math.round(units * LOMITO_KG_ESTIMATE * 1000)} g estimados)`;
     default:

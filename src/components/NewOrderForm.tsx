@@ -137,8 +137,8 @@ export function NewOrderForm({
           <div>
             <h2 className="text-lg font-semibold">1. Productos y servicios</h2>
             <p className="text-sm text-stone-500 mt-1">
-              Elija cantidades por producto. Los servicios de loncheado y plateado
-              están agrupados bajo cada referencia.
+              Elija cantidades por producto (unidad) o por servicio de loncheado
+              y plateado sobre el producto entero.
             </p>
           </div>
 

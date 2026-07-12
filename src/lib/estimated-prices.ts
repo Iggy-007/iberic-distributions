@@ -82,8 +82,8 @@ export function formatEstimatedPriceForUnits(
       const packages = units * HAM_LONCHEADO_PACKAGES_PER_UNIT;
       const pkgLabel =
         units === 1
-          ? `${HAM_LONCHEADO_PACKAGES_PER_UNIT} paquetes`
-          : `${HAM_LONCHEADO_PACKAGES_PER_UNIT} paq. × ${units} unid.`;
+          ? `${HAM_LONCHEADO_PACKAGES_PER_UNIT} sobres de 100 g`
+          : `${HAM_LONCHEADO_PACKAGES_PER_UNIT} sobres × ${units} serv.`;
       return formatEstimatedPriceFormula(
         variant.priceCents,
         variant.vatRate,
@@ -96,8 +96,8 @@ export function formatEstimatedPriceForUnits(
       const plates = units * HAM_PLATEADO_PLATES_PER_UNIT;
       const plateLabel =
         units === 1
-          ? `${HAM_PLATEADO_PLATES_PER_UNIT} platos`
-          : `${HAM_PLATEADO_PLATES_PER_UNIT} platos × ${units} unid.`;
+          ? `${HAM_PLATEADO_PLATES_PER_UNIT} platos de 90 g`
+          : `${HAM_PLATEADO_PLATES_PER_UNIT} platos × ${units} serv.`;
       return formatEstimatedPriceFormula(
         variant.priceCents,
         variant.vatRate,

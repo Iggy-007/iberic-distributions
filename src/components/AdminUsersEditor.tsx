@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Role } from "@prisma/client";
 import { ROLE_LABELS } from "@/lib/constants";
 import { UserActivityPanel } from "@/components/UserActivityPanel";
 import type { ActivityTimelineItem } from "@/lib/user-activity";
@@ -35,7 +36,7 @@ export function AdminUsersEditor({
     email: "",
     password: "",
     name: "",
-    role: "CLIENT",
+    role: "CLIENT" as Role,
     organizationName: "",
     city: "",
     street: "",
@@ -67,7 +68,12 @@ export function AdminUsersEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
-        organizationType: form.role === "PROVIDER" ? "PROVIDER" : "CLIENT",
+        organizationType:
+          form.role === "PROVIDER"
+            ? "PROVIDER"
+            : form.role === "ADMIN"
+              ? "ADMIN"
+              : "CLIENT",
       }),
     });
 
@@ -84,7 +90,7 @@ export function AdminUsersEditor({
       email: "",
       password: "",
       name: "",
-      role: "CLIENT",
+      role: "CLIENT" as Role,
       organizationName: "",
       city: "",
       street: "",
@@ -189,17 +195,35 @@ export function AdminUsersEditor({
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="rounded-lg border border-stone-300 px-3 py-2"
           />
-          <select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-            className="rounded-lg border border-stone-300 px-3 py-2"
-          >
-            <option value="CLIENT">Cliente</option>
-            <option value="PROVIDER">Proveedor</option>
-            <option value="ADMIN">Administrador</option>
-          </select>
+          <fieldset className="sm:col-span-2 rounded-lg border border-stone-200 p-3">
+            <legend className="px-1 text-sm font-medium text-stone-700">
+              Rol del usuario
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-4">
+              {(["CLIENT", "PROVIDER", "ADMIN"] as const).map((role) => (
+                <label
+                  key={role}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-stone-800"
+                >
+                  <input
+                    type="radio"
+                    name="userRole"
+                    value={role}
+                    checked={form.role === role}
+                    onChange={() => setForm({ ...form, role })}
+                    className="text-wine focus:ring-wine"
+                  />
+                  {ROLE_LABELS[role]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <input
-            placeholder="Organización"
+            placeholder={
+              form.role === "ADMIN"
+                ? "Organización (opcional)"
+                : "Organización"
+            }
             value={form.organizationName}
             onChange={(e) =>
               setForm({ ...form, organizationName: e.target.value })

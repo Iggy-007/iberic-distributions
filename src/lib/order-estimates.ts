@@ -7,10 +7,12 @@ export const WHOLE_HAM_KG_MIN = 7;
 export const WHOLE_HAM_KG_MAX = 7.5;
 /** Kg usados para estimar el precio (tope del rango) */
 export const WHOLE_HAM_KG_ESTIMATE = WHOLE_HAM_KG_MAX;
-/** Paquetes loncheado estimados por unidad pedida de jamón loncheado */
-export const HAM_LONCHEADO_PACKAGES_PER_UNIT = 30;
-/** Platos estimados por unidad pedida de jamón plateado */
-export const HAM_PLATEADO_PLATES_PER_UNIT = 30;
+/** Referencia para loncheado/plateado: jamón de ~8 kg */
+export const WHOLE_HAM_REFERENCE_KG = 8;
+/** Sobres de loncheado (~100 g) estimados por unidad de jamón pedida */
+export const HAM_LONCHEADO_PACKAGES_PER_UNIT = 36;
+/** Platos en atmósfera (~90 g) estimados por unidad de jamón pedida */
+export const HAM_PLATEADO_PLATES_PER_UNIT = 40;
 /** Kg estimados por unidad de lomito (400 g; cobro por kg) */
 export const LOMITO_KG_ESTIMATE = 0.4;
 
@@ -120,6 +122,14 @@ function getVariantKindFromLegacyName(name: string): VariantKind | null {
   return null;
 }
 
+export function formatOrderedUnitsAbbrev(units: number, kind: VariantKind): string {
+  const isService =
+    kind === "ham_loncheado" ||
+    kind === "ham_plateado" ||
+    kind === "lomito_loncheado";
+  return `${units} ${isService ? "serv." : "unid."}`;
+}
+
 export function formatWholeHamWeightLabel(units: number): string {
   const n = Math.round(units);
   if (n === 1) {
@@ -133,9 +143,9 @@ export function getVariantOrderHint(kind: VariantKind): string | null {
     case "whole_ham":
       return "Peso entre 7 y 7,5 kg por unidad — precio estimado";
     case "ham_loncheado":
-      return `~${HAM_LONCHEADO_PACKAGES_PER_UNIT} paquetes por unidad (estimado)`;
+      return `~${HAM_LONCHEADO_PACKAGES_PER_UNIT} sobres de 100 g por servicio (estimado, jamón ~${WHOLE_HAM_REFERENCE_KG} kg)`;
     case "ham_plateado":
-      return `~${HAM_PLATEADO_PLATES_PER_UNIT} platos por unidad (estimado)`;
+      return `~${HAM_PLATEADO_PLATES_PER_UNIT} platos de 90 g en atmósfera por servicio (estimado, jamón ~${WHOLE_HAM_REFERENCE_KG} kg)`;
     case "lomito":
       return `~${formatLomitoWeightLabel()} por unidad (cobro por kg estimado)`;
     default:
@@ -214,7 +224,7 @@ export function buildOrderEstimate(
         key: variant.id,
         productName: variant.product.name,
         variantName: variant.name,
-        quantityLabel: `${units} unid. (~${packages} paquetes)`,
+        quantityLabel: `${formatOrderedUnitsAbbrev(units, kind)} (~${packages} sobres)`,
         priceFormula: formatEstimatedPriceForUnits(variant, units),
         subtotalCents: subtotal,
         vatRate: variant.vatRate,
@@ -231,7 +241,7 @@ export function buildOrderEstimate(
         key: variant.id,
         productName: variant.product.name,
         variantName: variant.name,
-        quantityLabel: `${units} unid. (~${plates} platos)`,
+        quantityLabel: `${formatOrderedUnitsAbbrev(units, kind)} (~${plates} platos)`,
         priceFormula: formatEstimatedPriceForUnits(variant, units),
         subtotalCents: subtotal,
         vatRate: variant.vatRate,
@@ -455,14 +465,14 @@ function storedLineQuantityLabel(line: StoredOrderLine): string {
         line.quantity > HAM_LONCHEADO_PACKAGES_PER_UNIT
           ? Math.round(line.quantity)
           : units * HAM_LONCHEADO_PACKAGES_PER_UNIT;
-      return `${units} unid. (~${packages} paquetes)`;
+      return `${formatOrderedUnitsAbbrev(units, kind)} (~${packages} sobres)`;
     }
     case "ham_plateado": {
       const plates =
         line.quantity > HAM_PLATEADO_PLATES_PER_UNIT
           ? Math.round(line.quantity)
           : units * HAM_PLATEADO_PLATES_PER_UNIT;
-      return `${units} unid. (~${plates} platos)`;
+      return `${formatOrderedUnitsAbbrev(units, kind)} (~${plates} platos)`;
     }
     case "lomito": {
       const grams = Math.round(units * LOMITO_KG_ESTIMATE * 1000);

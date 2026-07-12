@@ -11,6 +11,7 @@ import { formatEstimatedPriceForUnits } from "@/lib/estimated-prices";
 import {
   formatVariantDisplayName,
   isServicePresentation,
+  orderQuantityUnitShort,
   resolveVariantGalvanReference,
   sortVariantsByPresentation,
 } from "@/lib/product-presentations";
@@ -94,6 +95,9 @@ function VariantQuantityRow({
         )
       : null;
 
+  const qtyUnit = orderQuantityUnitShort(presentation);
+  const qtyUnitPlural = qtyUnit === "servicio" ? "servicios" : "unidades";
+
   return (
     <div
       className={`flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between ${
@@ -122,7 +126,7 @@ function VariantQuantityRow({
         )}
       </div>
       <div className="flex items-center gap-2 shrink-0 sm:pt-0.5">
-        <span className="text-xs text-stone-500">unid.</span>
+        <span className="text-xs text-stone-500">{qtyUnit}</span>
         <input
           type="number"
           min={0}
@@ -133,7 +137,7 @@ function VariantQuantityRow({
           }
           className="w-20 rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-center"
           placeholder="0"
-          aria-label={`Cantidad ${label}`}
+          aria-label={`Cantidad de ${qtyUnitPlural} de ${label}`}
         />
       </div>
     </div>
