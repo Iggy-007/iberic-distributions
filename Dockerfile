@@ -45,8 +45,9 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Full node_modules from builder (includes generated Prisma engines for Alpine).
 COPY --from=builder /app/node_modules /opt/ops/node_modules
 COPY scripts/ops-db-push.sh /opt/ops/ops-db-push.sh
+COPY scripts/ops-reset-admin.sh /opt/ops/ops-reset-admin.sh
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh /opt/ops/ops-db-push.sh \
+RUN chmod +x /docker-entrypoint.sh /opt/ops/ops-db-push.sh /opt/ops/ops-reset-admin.sh \
   && chown -R nextjs:nodejs /opt/ops
 
 RUN mkdir -p public/uploads/docs && chown -R nextjs:nodejs public/uploads

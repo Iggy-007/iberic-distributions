@@ -12,7 +12,7 @@
     "db:push:prod": "sh /opt/ops/ops-db-push.sh",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:prod": "node prisma/seed.bundle.cjs",
-    "db:reset-admin:prod": "node prisma/reset-admin.bundle.cjs",
+    "db:reset-admin:prod": "sh /opt/ops/ops-reset-admin.sh",
     "db:update-vat": "tsx prisma/update-vat.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:ensure": "tsx scripts/ensure-data.ts",

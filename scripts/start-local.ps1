@@ -11,19 +11,26 @@ NEXTAUTH_URL="http://localhost:3000"
 }
 
 $schemaPath = "prisma\schema.prisma"
-$schema = Get-Content $schemaPath -Raw
-$needsSqlite = $schema -match 'provider = "postgresql"'
+$originalSchema = Get-Content $schemaPath -Raw
 
-if ($needsSqlite) {
-  Write-Host "Configurando SQLite para desarrollo local..." -ForegroundColor Yellow
-  $schema = $schema -replace 'provider = "postgresql"', 'provider = "sqlite"'
-  Set-Content -Path $schemaPath -Value $schema -NoNewline
-  npx prisma generate | Out-Null
-  npx prisma db push | Out-Null
-  if (-not (Test-Path "prisma\dev.db")) {
-    npm run db:seed
+try {
+  if ($originalSchema -match 'provider = "postgresql"') {
+    Write-Host "Configurando SQLite para desarrollo local..." -ForegroundColor Yellow
+    $sqliteSchema = $originalSchema -replace 'provider = "postgresql"', 'provider = "sqlite"'
+    Set-Content -Path $schemaPath -Value $sqliteSchema -NoNewline
+    npx prisma generate | Out-Null
+    npx prisma db push | Out-Null
+    if (-not (Test-Path "prisma\dev.db")) {
+      npm run db:seed
+    }
+  }
+
+  Write-Host "Arrancando http://localhost:3000 ..." -ForegroundColor Green
+  npm run dev
+}
+finally {
+  if ($originalSchema -match 'provider = "postgresql"') {
+    Set-Content -Path $schemaPath -Value $originalSchema -NoNewline
+    Write-Host "Esquema Prisma restaurado a PostgreSQL (produccion)." -ForegroundColor DarkGray
   }
 }
-
-Write-Host "Arrancando http://localhost:3000 ..." -ForegroundColor Green
-npm run dev
