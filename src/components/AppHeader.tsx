@@ -21,7 +21,8 @@ export function AppHeader({
 
   async function handleSignOut() {
     setSigningOut(true);
-    await signOut({ callbackUrl: "/login" });
+    const loginUrl = `${window.location.origin}/login`;
+    await signOut({ callbackUrl: loginUrl });
   }
 
   return (

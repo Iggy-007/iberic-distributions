@@ -23,7 +23,11 @@ export function generateTrackingToken(): string {
 }
 
 export function getAppBaseUrl(): string {
-  return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const url =
+    process.env.NEXTAUTH_URL ??
+    process.env.APP_URL ??
+    "http://localhost:3000";
+  return url.replace(/\/$/, "");
 }
 
 export function getTrackingUrl(token: string): string {

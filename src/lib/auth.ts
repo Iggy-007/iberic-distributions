@@ -1,9 +1,11 @@
 import { NextAuthOptions, getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import CredentialsProvider from "next-auth/providers/credentials";import bcrypt from "bcryptjs";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
 import { ROLE_HOME } from "./constants";
+import { getAppBaseUrl } from "./utils";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -62,8 +64,22 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith(baseUrl)) return url;
-      return baseUrl;
+      const appUrl = getAppBaseUrl() || baseUrl.replace(/\/$/, "");
+
+      if (url.startsWith("/")) {
+        return `${appUrl}${url}`;
+      }
+
+      try {
+        const target = new URL(url);
+        if (target.origin === new URL(appUrl).origin) {
+          return url;
+        }
+      } catch {
+        // ignore malformed URLs
+      }
+
+      return appUrl;
     },
   },
 };
