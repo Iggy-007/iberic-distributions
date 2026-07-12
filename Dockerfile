@@ -36,11 +36,12 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Full node_modules for one-off prisma CLI commands in production terminal.
-COPY --from=deps /app/node_modules /opt/ops/node_modules
+# Full node_modules from builder (includes generated Prisma engines for Alpine).
+COPY --from=builder /app/node_modules /opt/ops/node_modules
 COPY scripts/ops-db-push.sh /opt/ops/ops-db-push.sh
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh /opt/ops/ops-db-push.sh
+RUN chmod +x /docker-entrypoint.sh /opt/ops/ops-db-push.sh \
+  && chown -R nextjs:nodejs /opt/ops
 
 RUN mkdir -p public/uploads/docs && chown -R nextjs:nodejs public/uploads
 
