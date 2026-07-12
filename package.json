@@ -9,6 +9,7 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:push:prod": "sh /opt/ops/ops-db-push.sh",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:prod": "node prisma/seed.bundle.cjs",
     "db:update-vat": "tsx prisma/update-vat.ts",

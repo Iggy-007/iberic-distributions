@@ -103,14 +103,17 @@ Save → **Redeploy** the application.
 
 ## Phase F — Database schema + seed (once only)
 
-After the first successful deploy:
-
-1. App → **Terminal** (or Execute Command)
-2. Run:
+After the first successful deploy, tables are created automatically on container start.
+To load demo users once, open the app container **Terminal** and run:
 
 ```bash
-npx prisma db push
 npm run db:seed:prod
+```
+
+To run schema sync manually:
+
+```bash
+npm run db:push:prod
 ```
 
 Expected: demo users and products created (see README test accounts).

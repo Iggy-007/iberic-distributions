@@ -35,9 +35,12 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
-COPY --from=builder /app/node_modules/.bin ./node_modules/.bin
+
+# Full node_modules for one-off prisma CLI commands in production terminal.
+COPY --from=deps /app/node_modules /opt/ops/node_modules
+COPY scripts/ops-db-push.sh /opt/ops/ops-db-push.sh
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh /opt/ops/ops-db-push.sh
 
 RUN mkdir -p public/uploads/docs && chown -R nextjs:nodejs public/uploads
 
@@ -46,4 +49,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
