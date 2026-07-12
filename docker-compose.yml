@@ -1,0 +1,20 @@
+# Optional local PostgreSQL (development / staging-like setup)
+# Usage: docker compose up -d
+# Then set DATABASE_URL in .env to:
+# postgresql://iberic:iberic@localhost:5432/iberic
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: iberic
+      POSTGRES_PASSWORD: iberic
+      POSTGRES_DB: iberic
+    ports:
+      - "5432:5432"
+    volumes:
+      - iberic_pg_data:/var/lib/postgresql/data
+
+volumes:
+  iberic_pg_data:

@@ -47,16 +47,22 @@ Admin y proveedor pueden editar las tarifas desde **Catálogo → Servicio de en
 
 - Node.js 18+
 - npm
+- Docker (opcional, para PostgreSQL local)
 
-## Instalación
+## Instalación (desarrollo local)
 
 ```bash
+docker compose up -d
+cp .env.example .env
 npm install
-npm run db:setup
+npx prisma db push
+npm run db:seed
 npm run dev
 ```
 
 Abrir [http://localhost:3000](http://localhost:3000).
+
+> La base de datos local usa **PostgreSQL** (contenedor Docker). En staging/producción ver [DEPLOY.md](./DEPLOY.md).
 
 ## Comandos útiles
 
@@ -175,12 +181,10 @@ Campos relevantes del flujo actual:
 - **OrderLine**: `actualWeightKg`, `actualPieceCount`, `galvanInternalId`
 - **Order**: `cancellationNumber`, `carrierCompany`, `carrierTrackingNumber`, `carrierPhone`
 
-## Producción
+## Producción / staging (Coolify)
 
-Para PostgreSQL, cambiar en `prisma/schema.prisma`:
+Despliegue en VPS Hostinger con Coolify + PostgreSQL: ver **[DEPLOY.md](./DEPLOY.md)**.
 
-```prisma
-provider = "postgresql"
-```
+## Producción (PostgreSQL manual)
 
-Y actualizar `DATABASE_URL` con la cadena de conexión.
+Para PostgreSQL sin Coolify, cambiar en `prisma/schema.prisma` (ya configurado como `postgresql`) y actualizar `DATABASE_URL`.
