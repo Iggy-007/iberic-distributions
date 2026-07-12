@@ -47,9 +47,63 @@ Admin y proveedor pueden editar las tarifas desde **Catálogo → Servicio de en
 
 - Node.js 18+
 - npm
-- Docker (opcional, para PostgreSQL local)
+- Docker (opcional; en Windows puedes usar SQLite local sin Docker)
+
+## Flujo de trabajo (local → producción)
+
+Usamos **dos entornos separados**:
+
+| Entorno | URL | Para qué |
+|---------|-----|----------|
+| **Local** | [http://localhost:3000](http://localhost:3000) | Probar cambios de código antes de publicarlos |
+| **Producción** | [https://ibericos.enviaclientes.com](https://ibericos.enviaclientes.com) | Uso real (pedidos, catálogo, Kanban) |
+
+### Datos vs código
+
+| Tipo de cambio | Dónde | Cómo se guarda |
+|----------------|-------|----------------|
+| Pedidos, productos, estados, usuarios… | Producción (web) | **Automático** en la base de datos del servidor |
+| Pantallas, lógica, nuevas funciones | Local primero | **Commit → GitHub → Coolify** despliega en producción |
+
+### Ciclo habitual de desarrollo
+
+```text
+1. Arrancar en local     →  npm run start:local   (o pedir al asistente: "arranca en local")
+2. Probar cambios        →  http://localhost:3000
+3. Cuando esté bien      →  commit + push a GitHub (el asistente lo hace cuando lo pidas)
+4. Coolify despliega     →  automático al hacer push a main (o Redeploy manual en Coolify)
+5. Comprobar en prod     →  https://ibericos.enviaclientes.com
+6. Seguir en local       →  vuelta al paso 1 para el siguiente cambio
+```
+
+**Frases útiles para el asistente:**
+
+- *"Arranca en local"* — levanta la app en tu PC
+- *"Guarda y súbelo a prod"* — commit, push y despliegue
+- *"Esto ya funciona en local, despliégalo"* — mismo flujo de publicación
+
+### Reglas importantes
+
+1. **No ejecutar `db:seed` en producción** — borra pedidos y datos reales.
+2. Lo probado en **local no afecta a producción** hasta hacer push.
+3. La base de datos de producción tiene **backup diario** (3:00, Coolify).
+4. Cambiar contraseñas de demo antes de clientes reales.
+
+---
 
 ## Instalación (desarrollo local)
+
+### Opción A — Windows sin Docker (recomendada)
+
+```powershell
+cd c:\src\Iberic_distribution
+npm install
+npm run start:local
+```
+
+`start:local` configura SQLite (`prisma/dev.db`), aplica el esquema, carga datos de demo si hace falta y arranca el servidor.
+
+### Opción B — PostgreSQL con Docker
 
 ```bash
 docker compose up -d
@@ -62,12 +116,14 @@ npm run dev
 
 Abrir [http://localhost:3000](http://localhost:3000).
 
-> La base de datos local usa **PostgreSQL** (contenedor Docker). En staging/producción ver [DEPLOY.md](./DEPLOY.md).
+> En staging/producción la base de datos es **PostgreSQL** (Coolify). Ver [DEPLOY.md](./DEPLOY.md).
 
 ## Comandos útiles
 
 | Comando | Descripción |
 |---------|-------------|
+| `npm run start:local` | Arranque completo en Windows (SQLite + `npm run dev`) |
+| `npm run setup:local` | Solo prepara BD local con Docker + PostgreSQL |
 | `npm run dev` | Servidor de desarrollo (puerto 3000) |
 | `npm run dev:clean` | Mata procesos en puertos 3000–3002, borra caché `.next` y arranca dev |
 | `npm run db:seed` | Restaura usuarios y productos (borra pedidos existentes) |
@@ -87,7 +143,7 @@ Abrir [http://localhost:3000](http://localhost:3000).
 
 Copiar `.env.example` a `.env`:
 
-- `DATABASE_URL` — SQLite en desarrollo (`file:./dev.db`)
+- `DATABASE_URL` — local: SQLite (`file:./dev.db`) o PostgreSQL con Docker (ver `.env.example`)
 - `NEXTAUTH_SECRET` — secreto para sesiones
 - `NEXTAUTH_URL` — URL de la app
 - `RESEND_API_KEY` — (opcional) para emails de seguimiento al cliente final
@@ -183,7 +239,19 @@ Campos relevantes del flujo actual:
 
 ## Producción / staging (Coolify)
 
+| Item | Valor |
+|------|-------|
+| URL pública | [https://ibericos.enviaclientes.com](https://ibericos.enviaclientes.com) |
+| Repositorio | [github.com/Iggy-007/iberic-distributions](https://github.com/Iggy-007/iberic-distributions) |
+| Rama de despliegue | `main` |
+
 Despliegue en VPS Hostinger con Coolify + PostgreSQL: ver **[DEPLOY.md](./DEPLOY.md)**.
+
+**Actualizar producción tras cambios de código:**
+
+```text
+git push origin main  →  Coolify reconstruye y despliega la app
+```
 
 ## Producción (PostgreSQL manual)
 

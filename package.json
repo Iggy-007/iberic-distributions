@@ -15,6 +15,8 @@
     "db:update-vat": "tsx prisma/update-vat.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:ensure": "tsx scripts/ensure-data.ts",
+    "setup:local": "powershell -ExecutionPolicy Bypass -File scripts/setup-local.ps1",
+    "start:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "sanity": "tsx scripts/sanity-check.ts",
     "dev:clean": "node scripts/clean-dev.mjs",
     "postinstall": "prisma generate"
