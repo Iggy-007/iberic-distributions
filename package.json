@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:prod": "node prisma/seed.bundle.cjs",
     "db:update-vat": "tsx prisma/update-vat.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:ensure": "tsx scripts/ensure-data.ts",

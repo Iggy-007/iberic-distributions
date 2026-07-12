@@ -110,7 +110,7 @@ After the first successful deploy:
 
 ```bash
 npx prisma db push
-npm run db:seed
+npm run db:seed:prod
 ```
 
 Expected: demo users and products created (see README test accounts).

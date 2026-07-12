@@ -14,6 +14,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 RUN npx prisma generate
+RUN npx esbuild prisma/seed.ts \
+  --bundle \
+  --platform=node \
+  --format=cjs \
+  --outfile=prisma/seed.bundle.cjs \
+  --external:@prisma/client
 RUN npm run build
 
 FROM base AS runner
