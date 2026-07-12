@@ -20,6 +20,12 @@ RUN npx esbuild prisma/seed.ts \
   --format=cjs \
   --outfile=prisma/seed.bundle.cjs \
   --external:@prisma/client
+RUN npx esbuild scripts/reset-admin.ts \
+  --bundle \
+  --platform=node \
+  --format=cjs \
+  --outfile=prisma/reset-admin.bundle.cjs \
+  --external:@prisma/client
 RUN npm run build
 
 FROM base AS runner

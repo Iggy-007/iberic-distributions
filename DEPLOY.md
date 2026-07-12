@@ -155,6 +155,7 @@ Schema change → Terminal: `npx prisma db push` (do **not** run `db:seed` on li
 |---------|-----|
 | Login redirects fail | `NEXTAUTH_URL` must match browser URL exactly (https) |
 | Sign out goes to `sslip.io` / 404 | Set `NEXTAUTH_URL` to `https://ibericos.enviaclientes.com` (not the Coolify test URL). Save → Redeploy |
+| Admin login fails | In Coolify terminal: `npm run db:reset-admin:prod`. Or set `RESET_ADMIN_ON_START=true`, Redeploy, test login, then remove that variable |
 | Database connection error | Use **internal** Postgres URL; app and DB on same server |
 | Uploads disappear | Check volume mounted at `/app/public/uploads` |
 | Build fails on Prisma | Ensure latest code with `postgresql` in `schema.prisma` is pushed |

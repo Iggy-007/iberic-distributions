@@ -9,4 +9,10 @@ if [ "${AUTO_DB_PUSH:-true}" = "true" ] && [ -f /app/prisma/schema.prisma ]; the
     || echo "WARNING: database schema sync failed; starting app anyway."
 fi
 
+if [ "${RESET_ADMIN_ON_START:-false}" = "true" ] && [ -f /app/prisma/reset-admin.bundle.cjs ]; then
+  echo "Resetting admin account..."
+  node /app/prisma/reset-admin.bundle.cjs \
+    || echo "WARNING: admin reset failed; starting app anyway."
+fi
+
 exec "$@"
