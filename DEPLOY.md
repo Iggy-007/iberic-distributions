@@ -78,6 +78,7 @@ App → **Environment Variables**:
 |-----|--------|
 | `NODE_ENV` | `production` |
 | `NEXTAUTH_URL` | `https://demo.yourdomain.com` (exact public URL, no trailing slash) |
+| `APP_URL` | Same as public URL (optional; use if `NEXTAUTH_URL` still points at a Coolify `sslip.io` test URL) |
 | `NEXTAUTH_SECRET` | Long random string (generate on PC, paste only here) |
 | `DATABASE_URL` | Internal Postgres URL from Phase B |
 | `RESEND_API_KEY` | Optional — leave empty to skip emails |
@@ -145,7 +146,15 @@ Code change → git push main → Coolify auto-deploy (if webhook enabled)
 
 New env var → Coolify UI → Save → Redeploy
 
-Schema change → Terminal: `npx prisma db push` (do **not** run `db:seed` on live staging unless you want to wipe data)
+Schema change → Terminal:
+
+```bash
+# Si cambia la tabla ShippingRate (servicios de envío), ejecutar antes del push:
+npx prisma db execute --file prisma/migrate-shipping-services.sql
+npx prisma db push
+```
+
+Do **not** run `db:seed` on live staging unless you want to wipe data.
 
 ---
 
@@ -154,7 +163,7 @@ Schema change → Terminal: `npx prisma db push` (do **not** run `db:seed` on li
 | Problem | Fix |
 |---------|-----|
 | Login redirects fail | `NEXTAUTH_URL` must match browser URL exactly (https) |
-| Sign out goes to `sslip.io` / 404 | Set `NEXTAUTH_URL` to `https://ibericos.enviaclientes.com` (not the Coolify test URL). Save → Redeploy |
+| Sign out goes to `sslip.io` / 404 | Set `NEXTAUTH_URL` and `APP_URL` to `https://ibericos.enviaclientes.com` (not the Coolify test URL). Save → Redeploy |
 | Admin login fails | In Coolify terminal: `npm run db:reset-admin:prod`. Or set `RESET_ADMIN_ON_START=true`, Redeploy, test login, then remove that variable |
 | Database connection error | Use **internal** Postgres URL; app and DB on same server |
 | Uploads disappear | Check volume mounted at `/app/public/uploads` |

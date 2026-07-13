@@ -64,22 +64,29 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      const appUrl = getAppBaseUrl() || baseUrl.replace(/\/$/, "");
+      const requestBase = baseUrl.replace(/\/$/, "");
 
       if (url.startsWith("/")) {
-        return `${appUrl}${url}`;
+        return `${requestBase}${url}`;
       }
 
       try {
         const target = new URL(url);
-        if (target.origin === new URL(appUrl).origin) {
+        const requestOrigin = new URL(requestBase).origin;
+
+        if (target.origin === requestOrigin) {
+          return url;
+        }
+
+        const canonical = getAppBaseUrl();
+        if (canonical && target.origin === new URL(canonical).origin) {
           return url;
         }
       } catch {
         // ignore malformed URLs
       }
 
-      return appUrl;
+      return `${requestBase}/login`;
     },
   },
 };

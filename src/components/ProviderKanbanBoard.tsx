@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderStatus } from "@prisma/client";
 import { NEXT_STATUS, PROVIDER_KANBAN_COLUMNS } from "@/lib/constants";
@@ -11,7 +11,10 @@ import {
 import { ProviderOrderActualsPanel } from "@/components/ProviderOrderActualsPanel";
 import { ProviderShipmentPanel } from "@/components/ProviderShipmentPanel";
 import { KanbanCard } from "@/components/KanbanCard";
+import { KanbanOnboardingBanner } from "@/components/KanbanOnboardingBanner";
+import { Alert } from "@/components/ui/Alert";
 import type { KanbanOrder } from "@/lib/kanban-types";
+import { cn } from "@/lib/cn";
 
 const COLUMN_STYLES = {
   workflow: {
@@ -28,27 +31,39 @@ const COLUMN_STYLES = {
 
 export function ProviderKanbanBoard({ orders }: { orders: KanbanOrder[] }) {
   const router = useRouter();
+  const [localOrders, setLocalOrders] = useState(orders);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<KanbanOrder | null>(null);
   const [shipmentOrder, setShipmentOrder] = useState<KanbanOrder | null>(null);
   const [alert, setAlert] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<OrderStatus | null>(null);
+  const [mobileColumn, setMobileColumn] = useState<OrderStatus>("SENT");
+
+  useEffect(() => {
+    setLocalOrders(orders);
+  }, [orders]);
 
   const ordersByStatus = useMemo(() => {
     const map = new Map<OrderStatus, KanbanOrder[]>();
     for (const column of PROVIDER_KANBAN_COLUMNS) {
       map.set(
         column.status,
-        orders.filter((o) => o.status === column.status)
+        localOrders.filter((o) => o.status === column.status)
       );
     }
     return map;
-  }, [orders]);
+  }, [localOrders]);
+
+  function patchOrderStatus(orderId: string, status: OrderStatus) {
+    setLocalOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+    );
+  }
 
   async function moveOrder(orderId: string, targetStatus: OrderStatus) {
     if (targetStatus === "CANCELLED") return;
 
-    const order = orders.find((o) => o.id === orderId);
+    const order = localOrders.find((o) => o.id === orderId);
     if (!order || order.status === targetStatus || order.status === "CANCELLED") {
       return;
     }
@@ -77,6 +92,9 @@ export function ProviderKanbanBoard({ orders }: { orders: KanbanOrder[] }) {
     }
 
     setAlert(null);
+    const previousStatus = order.status;
+    patchOrderStatus(orderId, targetStatus);
+
     const res = await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -85,6 +103,7 @@ export function ProviderKanbanBoard({ orders }: { orders: KanbanOrder[] }) {
 
     if (!res.ok) {
       const data = await res.json();
+      patchOrderStatus(orderId, previousStatus);
       setAlert(data.error ?? "No se pudo actualizar el pedido");
       return;
     }
@@ -98,97 +117,117 @@ export function ProviderKanbanBoard({ orders }: { orders: KanbanOrder[] }) {
     void moveOrder(orderId, targetStatus);
   }
 
-  return (
-    <div className="space-y-6">
-      {alert && (
-        <div
-          role="alert"
-          className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          <span>{alert}</span>
-          <button
-            type="button"
-            onClick={() => setAlert(null)}
-            className="shrink-0 font-medium underline"
-          >
-            Cerrar
-          </button>
-        </div>
-      )}
+  function renderColumn(
+    column: (typeof PROVIDER_KANBAN_COLUMNS)[number],
+    compact = false
+  ) {
+    const columnOrders = ordersByStatus.get(column.status) ?? [];
+    const isCancelled = column.variant === "cancelled";
+    const styles = COLUMN_STYLES[column.variant];
+    const isDropTarget = !isCancelled && dropTarget === column.status;
 
-      <div className="overflow-x-auto pb-2 -mx-1 px-1">
-        <div className="grid min-w-[68rem] gap-4 grid-cols-5">
-          {PROVIDER_KANBAN_COLUMNS.map((column) => {
-            const columnOrders = ordersByStatus.get(column.status) ?? [];
-            const isCancelled = column.variant === "cancelled";
-            const styles = COLUMN_STYLES[column.variant];
-            const isDropTarget =
-              !isCancelled && dropTarget === column.status;
-
+    return (
+      <section
+        key={column.status}
+        onDragOver={
+          isCancelled
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                setDropTarget(column.status);
+              }
+        }
+        onDragLeave={isCancelled ? undefined : () => setDropTarget(null)}
+        onDrop={
+          isCancelled
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                const orderId = e.dataTransfer.getData("text/order-id");
+                if (orderId) handleDrop(column.status, orderId);
+              }
+        }
+        className={cn(
+          "flex min-h-[22rem] flex-col rounded-xl border p-3 transition",
+          isDropTarget ? styles.drop : styles.base,
+          compact ? "min-h-0" : ""
+        )}
+      >
+        <header className={cn("mb-3 border-b pb-2", styles.header)}>
+          <h2 className="text-sm font-semibold">{column.label}</h2>
+          <p className="text-xs opacity-80">
+            {columnOrders.length} pedido
+            {columnOrders.length !== 1 ? "s" : ""}
+          </p>
+        </header>
+        <div className="flex flex-1 flex-col gap-2">
+          {columnOrders.map((order) => {
+            const next = NEXT_STATUS[order.status];
             return (
-              <section
-                key={column.status}
-                onDragOver={
-                  isCancelled
-                    ? undefined
-                    : (e) => {
-                        e.preventDefault();
-                        setDropTarget(column.status);
-                      }
-                }
-                onDragLeave={
-                  isCancelled ? undefined : () => setDropTarget(null)
-                }
-                onDrop={
-                  isCancelled
-                    ? undefined
-                    : (e) => {
-                        e.preventDefault();
-                        const orderId = e.dataTransfer.getData("text/order-id");
-                        if (orderId) handleDrop(column.status, orderId);
-                      }
-                }
-                className={`flex min-h-[22rem] flex-col rounded-xl border p-3 transition ${
-                  isDropTarget ? styles.drop : styles.base
-                }`}
-              >
-                <header className={`mb-3 border-b pb-2 ${styles.header}`}>
-                  <h2 className="text-sm font-semibold">{column.label}</h2>
-                  <p className="text-xs opacity-80">
-                    {columnOrders.length} pedido
-                    {columnOrders.length !== 1 ? "s" : ""}
-                  </p>
-                  {isCancelled && (
-                    <p className="text-[10px] mt-1 opacity-70">
-                      Doble clic para ver detalle y reactivar
-                    </p>
-                  )}
-                </header>
-                <div className="flex flex-1 flex-col gap-2">
-                  {columnOrders.map((order) => (
-                    <KanbanCard
-                      key={order.id}
-                      order={order}
-                      cancelled={isCancelled}
-                      draggable={!isCancelled}
-                      onSelect={() => {
-                        setAlert(null);
-                        setSelectedOrder(order);
-                      }}
-                      onDragStart={() => setDraggingId(order.id)}
-                    />
-                  ))}
-                  {columnOrders.length === 0 && (
-                    <p className="py-8 text-center text-xs opacity-60">
-                      {isCancelled
-                        ? "Sin pedidos cancelados"
-                        : "Arrastre pedidos aquí"}
-                    </p>
-                  )}
-                </div>
-              </section>
+              <KanbanCard
+                key={order.id}
+                order={order}
+                cancelled={isCancelled}
+                draggable={!isCancelled}
+                showAdvance={!!next && !isCancelled}
+                onOpenActuals={() => {
+                  setAlert(null);
+                  setSelectedOrder(order);
+                }}
+                onAdvance={() => next && void moveOrder(order.id, next)}
+                onDragStart={() => setDraggingId(order.id)}
+              />
             );
           })}
+          {columnOrders.length === 0 && (
+            <p className="py-8 text-center text-xs opacity-60">
+              {isCancelled ? "Sin pedidos cancelados" : "Arrastre pedidos aquí"}
+            </p>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <KanbanOnboardingBanner />
+
+      {alert && (
+        <Alert variant="error" onDismiss={() => setAlert(null)}>
+          {alert}
+        </Alert>
+      )}
+
+      {/* Mobile: tabbed single column */}
+      <div className="md:hidden space-y-3">
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {PROVIDER_KANBAN_COLUMNS.map((col) => (
+            <button
+              key={col.status}
+              type="button"
+              onClick={() => setMobileColumn(col.status)}
+              className={cn(
+                "shrink-0 rounded-lg px-3 py-2 text-xs font-medium min-h-[44px]",
+                mobileColumn === col.status
+                  ? "bg-wine text-white"
+                  : "border border-stone-300 text-stone-700"
+              )}
+            >
+              {col.label.split(" ").slice(-1)[0]} (
+              {ordersByStatus.get(col.status)?.length ?? 0})
+            </button>
+          ))}
+        </div>
+        {PROVIDER_KANBAN_COLUMNS.filter((c) => c.status === mobileColumn).map(
+          (col) => renderColumn(col, true)
+        )}
+      </div>
+
+      {/* Desktop: full kanban */}
+      <div className="hidden md:block overflow-x-auto pb-2 -mx-1 px-1">
+        <div className="grid min-w-[68rem] gap-4 grid-cols-5">
+          {PROVIDER_KANBAN_COLUMNS.map((col) => renderColumn(col))}
         </div>
       </div>
 
@@ -217,7 +256,7 @@ export function ProviderKanbanBoard({ orders }: { orders: KanbanOrder[] }) {
       )}
 
       {draggingId && (
-        <p className="text-xs text-stone-500 text-center">
+        <p className="hidden md:block text-xs text-stone-500 text-center">
           Suelte el pedido en la siguiente columna. Para «En envío» se pedirán
           los datos del transportista.
         </p>

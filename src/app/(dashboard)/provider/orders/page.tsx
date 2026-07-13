@@ -16,8 +16,8 @@ export default async function ProviderOrdersPage() {
       <div>
         <h1 className="text-2xl font-bold">Pedidos</h1>
         <p className="text-sm text-stone-500 mt-1">
-          Arrastre los pedidos entre columnas. Clic en una tarjeta para datos
-          reales; doble clic para abrir el detalle.
+          Arrastre entre columnas en escritorio o use «Avanzar» en móvil. Registre
+          datos reales antes de mover cada pedido.
         </p>
       </div>
       <ProviderKanbanBoard orders={kanbanOrders} />

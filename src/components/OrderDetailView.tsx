@@ -5,6 +5,7 @@ import { OrderTimeline } from "@/components/OrderTimeline";
 import { OrderStatusActions } from "@/components/OrderStatusActions";
 import { CancelOrderButton } from "@/components/CancelOrderButton";
 import { formatEuros } from "@/lib/shipping";
+import { orderShippingLabel } from "@/lib/shipping-rates";
 import {
   buildStoredOrderEstimate,
   type StoredOrderLine,
@@ -15,6 +16,8 @@ import type { OrderWithDetails } from "@/lib/orders";
 import { FinalClientInfo } from "@/components/FinalClientInfo";
 import { CarrierInfoBlock } from "@/components/CarrierInfoBlock";
 import { getTrackingUrl } from "@/lib/utils";
+import { CopyTrackingButton } from "@/components/CopyTrackingButton";
+import { BackLink } from "@/components/ui/BackLink";
 import { ProviderLineActualsEditor } from "@/components/ProviderLineActualsEditor";
 import { ProviderReactivateOrderButton } from "@/components/ProviderReactivateOrderButton";
 import { ProductGalvanReference } from "@/components/ProductGalvanReference";
@@ -51,8 +54,22 @@ export function OrderDetailView({
       ? getOrderMissingActualsMessage(order.lines)
       : null;
 
+  const backHref =
+    role === Role.CLIENT
+      ? "/client/orders"
+      : role === Role.PROVIDER
+        ? "/provider/orders"
+        : "/admin/orders";
+  const backLabel =
+    role === Role.CLIENT
+      ? "Mis pedidos"
+      : role === Role.PROVIDER
+        ? "Tablero de pedidos"
+        : "Todos los pedidos";
+
   return (
     <div className="space-y-6">
+      <BackLink href={backHref}>{backLabel}</BackLink>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-stone-900">
@@ -107,9 +124,7 @@ export function OrderDetailView({
           <OrderFinancialSummary
             lines={estimate.lines}
             shippingCostCents={order.shippingCostCents}
-            shippingLabel={`Gastos de envío (${
-              order.shippingType === "NATIONAL" ? "nacional" : "internacional"
-            })`}
+            shippingLabel={orderShippingLabel(order)}
             isEstimate={hasEstimates}
             renderLineExtra={(line) => {
               const orderLine = order.lines.find((l) => l.id === line.key);
@@ -171,17 +186,24 @@ export function OrderDetailView({
             </p>
           )}
           {order.trackingToken && (
-            <p className="text-sm text-stone-500 mt-2">
-              Enlace de seguimiento:{" "}
-              <Link
-                href={`/tracking/${order.trackingToken.token}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-wine hover:underline break-all"
-              >
-                {getTrackingUrl(order.trackingToken.token)}
-              </Link>
-            </p>
+            <div className="text-sm text-stone-500 mt-2 space-y-2">
+              <p>
+                Enlace de seguimiento:{" "}
+                <Link
+                  href={`/tracking/${order.trackingToken.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-wine hover:underline break-all"
+                >
+                  /tracking/{order.trackingToken.token}
+                </Link>
+              </p>
+              {role === Role.CLIENT && (
+                <CopyTrackingButton
+                  url={getTrackingUrl(order.trackingToken.token)}
+                />
+              )}
+            </div>
           )}
           <div className="mt-4">
             <CarrierInfoBlock

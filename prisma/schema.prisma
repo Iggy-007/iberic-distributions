@@ -152,6 +152,9 @@ model Order {
   finalClientEmail         String?
   shippingType      ShippingType
   shippingCostCents Int
+  shippingServiceId String?
+  shippingService   ShippingRate? @relation(fields: [shippingServiceId], references: [id], onDelete: SetNull)
+  shippingLabel     String?
   subtotalCents     Int
   vatCents          Int                @default(0)
   totalCents        Int
@@ -218,11 +221,19 @@ model TrackingToken {
 }
 
 model ShippingRate {
-  type       ShippingType @id
-  priceCents Int
+  id         String       @id @default(cuid())
+  type       ShippingType
   label      String
+  priceCents Int
   supplier   String       @default("")
+  isDefault  Boolean      @default(false)
+  active     Boolean      @default(true)
+  sortOrder  Int          @default(0)
+  orders     Order[]
+  createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+
+  @@index([type, active])
 }
 
 model CatalogNotification {

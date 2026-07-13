@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { DashboardShell } from "@/components/DashboardShell";
 
 const providerNav = [
+  { href: "/provider", label: "Panel" },
   { href: "/provider/orders", label: "Pedidos" },
   { href: "/provider/catalog", label: "Catálogo" },
 ];

@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream px-4 py-10">
       <div className="w-full max-w-lg">
-        <div className="mb-10 flex justify-center sm:mb-12">
+        <div className="mb-10 flex w-full justify-center sm:mb-12">
           <Logo size="hero" linked={false} />
         </div>
 
@@ -82,11 +82,22 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-wine px-4 py-2.5 font-medium text-white hover:bg-wine-dark disabled:opacity-60"
+              className="w-full rounded-lg bg-wine px-4 py-2.5 font-medium text-white hover:bg-wine-dark disabled:opacity-60 min-h-[44px]"
             >
               {loading ? "Entrando..." : "Iniciar sesión"}
             </button>
           </form>
+
+          <p className="mt-4 text-center text-xs text-stone-500">
+            ¿Olvidó su contraseña? Contacte con el administrador de su
+            organización o escriba a{" "}
+            <a
+              href="mailto:admin@ibericdistributions.com"
+              className="text-wine hover:underline"
+            >
+              admin@ibericdistributions.com
+            </a>
+          </p>
         </div>
       </div>
     </div>

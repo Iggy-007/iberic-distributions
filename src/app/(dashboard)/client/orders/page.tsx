@@ -53,7 +53,7 @@ export default async function ClientOrdersPage({
         historyTotalPages={historyResult.totalPages}
         operationalTotal={operationalTotal}
         hrefPrefix="/client/orders"
-        showCancel
+        showCancel={false}
       />
     </div>
   );

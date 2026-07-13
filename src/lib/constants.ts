@@ -8,6 +8,14 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: "Pedido cancelado",
 };
 
+export const ORDER_STATUS_SHORT_LABELS: Record<OrderStatus, string> = {
+  SENT: "Solicitado",
+  RECEIVED_BY_PROVIDER: "Aceptado",
+  IN_PROCESS: "En proceso",
+  SHIPPED_TO_FINAL: "En envío",
+  CANCELLED: "Cancelado",
+};
+
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   SENT: "bg-blue-100 text-blue-800",
   RECEIVED_BY_PROVIDER: "bg-amber-100 text-amber-800",
@@ -45,7 +53,7 @@ export const PROVIDER_KANBAN_COLUMNS = [
 export const ROLE_HOME: Record<Role, string> = {
   ADMIN: "/admin",
   CLIENT: "/client",
-  PROVIDER: "/provider/orders",
+  PROVIDER: "/provider",
 };
 
 export const NATIONAL_SHIPPING_CENTS = 600;

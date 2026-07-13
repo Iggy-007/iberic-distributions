@@ -442,14 +442,14 @@ export function AdminUsersEditor({
         </p>
       ) : (
         <div className="rounded-xl border border-stone-200 bg-white overflow-x-auto">
-          <table className="w-full text-sm min-w-[56rem]">
+          <table className="w-full text-sm min-w-[32rem] md:min-w-[48rem]">
             <thead className="bg-stone-50 text-left">
               <tr>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Teléfono</th>
+                <th className="px-4 py-3 hidden md:table-cell">Teléfono</th>
                 <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3">Organización</th>
+                <th className="px-4 py-3 hidden lg:table-cell">Organización</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
@@ -464,9 +464,9 @@ export function AdminUsersEditor({
                 >
                   <td className="px-4 py-3">{u.name}</td>
                   <td className="px-4 py-3">{u.email}</td>
-                  <td className="px-4 py-3">{u.phone ?? "—"}</td>
+                  <td className="px-4 py-3 hidden md:table-cell">{u.phone ?? "—"}</td>
                   <td className="px-4 py-3">{ROLE_LABELS[u.role]}</td>
-                  <td className="px-4 py-3">{u.organization?.name ?? "—"}</td>
+                  <td className="px-4 py-3 hidden lg:table-cell">{u.organization?.name ?? "—"}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => toggleActive(u.id, u.active)}

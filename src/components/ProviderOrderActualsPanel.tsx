@@ -15,6 +15,9 @@ import {
   lineToDraft,
   type LineDraft,
 } from "@/components/ProviderLineActualFields";
+import { Drawer } from "@/components/ui/Drawer";
+import { Alert } from "@/components/ui/Alert";
+import { btnPrimary, btnSecondary } from "@/lib/ui-classes";
 
 export function ProviderOrderActualsPanel({
   order,
@@ -103,57 +106,17 @@ export function ProviderOrderActualsPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
-      <div className="absolute inset-0" onClick={onClose} aria-hidden />
-      <aside className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-xl">
-        <header className="border-b border-stone-200 px-5 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-stone-900">
-                Pedido #{order.orderNumber}
-              </h2>
-              <p className="text-sm text-stone-500">{order.clientOrg.name}</p>
-              {isCancelled && (
-                <p className="mt-1 text-xs font-medium text-stone-600">
-                  Pedido cancelado — puede editar datos o reactivar desde el
-                  detalle.
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-2 py-1 text-stone-500 hover:bg-stone-100"
-            >
-              ✕
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-stone-500">
-            Loncheado y plateado requieren peso del jamón y paquetes/platos
-            reales. Doble clic en la tarjeta abre el detalle.
-          </p>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {order.lines.map((line) => {
-            const draft = drafts.find((d) => d.lineId === line.id)!;
-            return (
-              <ProviderLineActualFields
-                key={line.id}
-                line={line}
-                draft={draft}
-                onUpdate={(field, value) => updateDraft(line.id, field, value)}
-              />
-            );
-          })}
-        </div>
-
-        <footer className="border-t border-stone-200 px-5 py-4 space-y-3">
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
+    <Drawer
+      title={`Pedido #${order.orderNumber}`}
+      subtitle={
+        isCancelled
+          ? `${order.clientOrg.name} · Cancelado`
+          : order.clientOrg.name
+      }
+      onClose={onClose}
+      footer={
+        <div className="space-y-3">
+          {error && <Alert variant="error">{error}</Alert>}
           {canCancelOrder(order.status) && (
             <CancelOrderButton
               orderId={order.id}
@@ -166,19 +129,41 @@ export function ProviderOrderActualsPanel({
               type="button"
               onClick={save}
               disabled={loading}
-              className="flex-1 rounded-lg bg-wine px-4 py-2.5 font-medium text-white hover:bg-wine-dark disabled:opacity-60"
+              className={btnPrimary + " flex-1"}
             >
               {loading ? "Guardando..." : "Guardar datos reales"}
             </button>
             <Link
               href={`/provider/orders/${order.id}`}
-              className="rounded-lg border border-stone-300 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50"
+              className={btnSecondary}
             >
               Ver detalle
             </Link>
           </div>
-        </footer>
-      </aside>
-    </div>
+        </div>
+      }
+    >
+      <p className="text-xs text-stone-500 mb-4">
+        Loncheado y plateado requieren peso del jamón y paquetes/platos reales.
+      </p>
+      {isCancelled && (
+        <p className="mb-4 text-xs font-medium text-stone-600">
+          Pedido cancelado — puede reactivar desde el detalle.
+        </p>
+      )}
+      <div className="space-y-4">
+        {order.lines.map((line) => {
+          const draft = drafts.find((d) => d.lineId === line.id)!;
+          return (
+            <ProviderLineActualFields
+              key={line.id}
+              line={line}
+              draft={draft}
+              onUpdate={(field, value) => updateDraft(line.id, field, value)}
+            />
+          );
+        })}
+      </div>
+    </Drawer>
   );
 }

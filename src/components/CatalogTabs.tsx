@@ -4,17 +4,17 @@ import { useState } from "react";
 import { ProductCatalog } from "@/components/ProductCatalog";
 import { CatalogProductsEditor } from "@/components/CatalogProductsEditor";
 import { CatalogNotificationsList } from "@/components/CatalogNotificationsList";
-import { ShippingRatesEditor } from "@/components/ShippingRatesEditor";
-import type { ShippingRates } from "@/lib/shipping-rates";
+import { ShippingServicesEditor } from "@/components/ShippingServicesEditor";
+import type { ShippingService } from "@/lib/shipping-rates";
 import type { CatalogProduct } from "@/components/CatalogProductsEditor";
 
 interface CatalogTabsProps {
   products: CatalogProduct[];
-  shippingRates: ShippingRates;
+  shippingServices: ShippingService[];
   mode: "admin" | "provider";
 }
 
-export function CatalogTabs({ products, shippingRates, mode }: CatalogTabsProps) {
+export function CatalogTabs({ products, shippingServices, mode }: CatalogTabsProps) {
   const [tab, setTab] = useState<"view" | "manage">("view");
   const isAdmin = mode === "admin";
 
@@ -46,7 +46,7 @@ export function CatalogTabs({ products, shippingRates, mode }: CatalogTabsProps)
       </div>
 
       {tab === "view" ? (
-        <ProductCatalog products={products} shippingRates={shippingRates} />
+        <ProductCatalog products={products} shippingServices={shippingServices} />
       ) : (
         <div className="space-y-6">
           {isAdmin ? (
@@ -65,7 +65,7 @@ export function CatalogTabs({ products, shippingRates, mode }: CatalogTabsProps)
             </p>
           )}
 
-          <ShippingRatesEditor initialRates={shippingRates} />
+          <ShippingServicesEditor initialServices={shippingServices} />
 
           <CatalogProductsEditor
             initialProducts={products}

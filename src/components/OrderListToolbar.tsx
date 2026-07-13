@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { ORDER_STATUS_LABELS } from "@/lib/constants";
+import { ORDER_STATUS_SHORT_LABELS } from "@/lib/constants";
 import {
   buildOrderListQuery,
   type OrderListParams,
@@ -96,7 +96,7 @@ export function OrderListToolbar({
           <option value="">Todos los estados</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {ORDER_STATUS_LABELS[s]}
+              {ORDER_STATUS_SHORT_LABELS[s]}
             </option>
           ))}
         </select>

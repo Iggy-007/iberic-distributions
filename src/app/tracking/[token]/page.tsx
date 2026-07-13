@@ -137,7 +137,12 @@ export default function TrackingPage() {
         )}
 
         {!data && !error && (
-          <p className="text-center text-stone-500">Cargando seguimiento...</p>
+          <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-4 animate-pulse">
+            <div className="mx-auto h-6 w-40 rounded bg-stone-200" />
+            <div className="mx-auto h-8 w-32 rounded bg-stone-200" />
+            <div className="h-24 rounded-lg bg-stone-100" />
+            <div className="h-32 rounded-lg bg-stone-100" />
+          </div>
         )}
       </div>
     </div>

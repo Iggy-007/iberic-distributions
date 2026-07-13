@@ -77,8 +77,8 @@ export function OrderFinancialSummary({
         </p>
 
         {sortedRates.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm">
+          <div className="relative overflow-x-auto [-webkit-overflow-scrolling:touch]">
+            <table className="w-full min-w-[280px] text-xs sm:text-sm">
               <thead>
                 <tr className="text-left text-stone-500">
                   <th className="pb-2 font-medium">Tipo IVA</th>

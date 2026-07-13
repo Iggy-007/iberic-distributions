@@ -5,6 +5,8 @@ import { OrderCard } from "@/components/OrderCard";
 import { orderInclude } from "@/lib/orders";
 import { CatalogNotificationsList } from "@/components/CatalogNotificationsList";
 import { getUnreadCatalogNotificationCount } from "@/lib/catalog-notifications";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { buildOrderListQuery } from "@/lib/order-list";
 
 export default async function AdminDashboardPage() {
   const [stats, recentOrders, catalogUnread] = await Promise.all([
@@ -25,18 +27,27 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-stone-200 bg-white p-5">
+        <Link
+          href={`/admin/orders${buildOrderListQuery({ view: "operational" })}`}
+          className="rounded-xl border border-stone-200 bg-white p-5 hover:border-wine/30 transition"
+        >
           <p className="text-sm text-stone-500">Pedidos abiertos</p>
           <p className="text-3xl font-bold text-wine mt-1">{stats.open}</p>
-        </div>
-        <div className="rounded-xl border border-stone-200 bg-white p-5">
+        </Link>
+        <Link
+          href={`/admin/orders${buildOrderListQuery({ view: "operational", status: "IN_PROCESS" })}`}
+          className="rounded-xl border border-stone-200 bg-white p-5 hover:border-wine/30 transition"
+        >
           <p className="text-sm text-stone-500">En proceso</p>
           <p className="text-3xl font-bold text-wine mt-1">{stats.inProcess}</p>
-        </div>
-        <div className="rounded-xl border border-stone-200 bg-white p-5">
+        </Link>
+        <Link
+          href={`/admin/orders${buildOrderListQuery({ view: "history" })}`}
+          className="rounded-xl border border-stone-200 bg-white p-5 hover:border-wine/30 transition"
+        >
           <p className="text-sm text-stone-500">Enviados esta semana</p>
           <p className="text-3xl font-bold text-wine mt-1">{stats.shippedWeek}</p>
-        </div>
+        </Link>
         <Link
           href="/admin/products"
           className="rounded-xl border border-amber-200 bg-amber-50 p-5 hover:border-amber-300 transition"
@@ -72,11 +83,20 @@ export default async function AdminDashboardPage() {
 
       <section>
         <h2 className="text-lg font-semibold mb-4">Pedidos recientes</h2>
-        <div className="space-y-3">
-          {recentOrders.map((order) => (
-            <OrderCard key={order.id} order={order} href={`/admin/orders/${order.id}`} />
-          ))}
-        </div>
+        {recentOrders.length === 0 ? (
+          <EmptyState
+            title="No hay pedidos recientes"
+            description="Cuando los clientes creen pedidos aparecerán aquí."
+            actionHref="/admin/users"
+            actionLabel="Gestionar usuarios"
+          />
+        ) : (
+          <div className="space-y-3">
+            {recentOrders.map((order) => (
+              <OrderCard key={order.id} order={order} href={`/admin/orders/${order.id}`} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

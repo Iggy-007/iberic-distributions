@@ -25,3 +25,7 @@ export function formatEuros(cents: number): string {
     currency: "EUR",
   }).format(cents / 100);
 }
+
+export function shippingTypeLabel(type: "NATIONAL" | "INTERNATIONAL"): string {
+  return type === "NATIONAL" ? "Nacional (España)" : "Internacional";
+}

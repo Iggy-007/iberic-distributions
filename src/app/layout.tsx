@@ -23,7 +23,7 @@ export default async function RootLayout({
 
   return (
     <html lang="es">
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <Providers session={session}>{children}</Providers>
       </body>
     </html>

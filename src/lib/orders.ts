@@ -102,10 +102,23 @@ export async function getOrderStats() {
   return { open, inProcess, shippedWeek, cancelled };
 }
 
-export async function getProviderPendingCount() {
-  return prisma.order.count({
-    where: {
-      status: { notIn: ["SHIPPED_TO_FINAL", "CANCELLED"] },
-    },
+export async function getKanbanStatusCounts(): Promise<Record<OrderStatus, number>> {
+  const rows = await prisma.order.groupBy({
+    by: ["status"],
+    _count: { _all: true },
   });
+
+  const counts: Record<OrderStatus, number> = {
+    SENT: 0,
+    RECEIVED_BY_PROVIDER: 0,
+    IN_PROCESS: 0,
+    SHIPPED_TO_FINAL: 0,
+    CANCELLED: 0,
+  };
+
+  for (const row of rows) {
+    counts[row.status] = row._count._all;
+  }
+
+  return counts;
 }

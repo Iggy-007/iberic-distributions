@@ -12,7 +12,7 @@ import { getOrdersForUser } from "@/lib/orders";
 import {
   resolveShippingType,
 } from "@/lib/shipping";
-import { getShippingCostCentsFromDb } from "@/lib/shipping-rates";
+import { resolveShippingService } from "@/lib/shipping-rates";
 import { orderTotalsFromLines } from "@/lib/pricing";
 import { finalClientFieldsSchema } from "@/lib/final-client";
 import { resolveOrderLines } from "@/lib/order-estimates";
@@ -43,6 +43,7 @@ const createOrderSchema = z
     lines: z.array(lineSchema).min(1),
     destinationType: z.enum(["CLIENT_WAREHOUSE", "FINAL_CLIENT"]),
     destEmail: z.string().email().optional().or(z.literal("")),
+    shippingServiceId: z.string().optional(),
   })
   .merge(finalClientFieldsSchema);
 
@@ -123,7 +124,11 @@ export async function POST(request: NextRequest) {
   }
 
   const shippingType = resolveShippingType(destCountry);
-  const shippingCostCents = await getShippingCostCentsFromDb(shippingType);
+  const shippingService = await resolveShippingService(
+    data.shippingServiceId,
+    shippingType
+  );
+  const shippingCostCents = shippingService.priceCents;
 
   const orderLines = resolveOrderLines(data.lines, allVariants);
 
@@ -156,6 +161,9 @@ export async function POST(request: NextRequest) {
       finalClientEmail: fc.finalClientEmail || null,
       shippingType: shippingType as ShippingType,
       shippingCostCents,
+      shippingServiceId:
+        shippingService.id.startsWith("fallback") ? null : shippingService.id,
+      shippingLabel: shippingService.label,
       subtotalCents,
       vatCents,
       totalCents,

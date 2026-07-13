@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getRequiredSession } from "@/lib/auth";
 import { getOrdersForUser } from "@/lib/orders";
 import { OrderCard } from "@/components/OrderCard";
+import { ClientOnboardingChecklist } from "@/components/ClientOnboardingChecklist";
 
 export default async function ClientDashboardPage() {
   const session = await getRequiredSession();
@@ -26,6 +27,8 @@ export default async function ClientDashboardPage() {
           Nuevo pedido
         </Link>
       </div>
+
+      <ClientOnboardingChecklist hasOrders={orders.length > 0} />
 
       <section>
         <h2 className="text-lg font-semibold mb-4">Mis pedidos recientes</h2>

@@ -32,7 +32,7 @@ export function NavLink({
   return (
     <Link
       href={href}
-      className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition sm:px-4 sm:py-3 ${
+      className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition sm:px-4 min-h-[44px] inline-flex items-center ${
         active
           ? "border-wine text-wine"
           : "border-transparent text-stone-600 hover:border-wine/40 hover:text-wine"

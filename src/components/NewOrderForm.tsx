@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatEuros, resolveShippingType } from "@/lib/shipping";
-import type { ShippingRates } from "@/lib/shipping-rates";
+import { formatEuros, resolveShippingType, shippingTypeLabel } from "@/lib/shipping";
+import type { ShippingService } from "@/lib/shipping-rates";
 import { buildOrderEstimate } from "@/lib/order-estimates";
 import {
   OrderProductPicker,
   type OrderVariant,
 } from "@/components/OrderProductPicker";
 import { OrderFinancialSummary } from "@/components/OrderFinancialSummary";
+import { Stepper } from "@/components/ui/Stepper";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { btnPrimary, btnSecondary } from "@/lib/ui-classes";
+import { cn } from "@/lib/cn";
 
 interface CartLine {
   variantId: string;
   quantity: number;
 }
+
+const STEPS = ["Productos", "Destino", "Cliente final", "Resumen"];
 
 const emptyFinalClient = {
   finalClientFirstName: "",
@@ -30,10 +38,10 @@ const emptyFinalClient = {
 
 export function NewOrderForm({
   variants,
-  shippingRates,
+  shippingServices,
 }: {
   variants: OrderVariant[];
-  shippingRates: ShippingRates;
+  shippingServices: ShippingService[];
 }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -44,6 +52,7 @@ export function NewOrderForm({
   const [finalClient, setFinalClient] = useState(emptyFinalClient);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedShippingServiceId, setSelectedShippingServiceId] = useState("");
 
   function getQty(variantId: string) {
     return cart.find((c) => c.variantId === variantId)?.quantity ?? 0;
@@ -68,10 +77,35 @@ export function NewOrderForm({
       ? "España"
       : finalClient.finalClientCountry;
   const shippingType = resolveShippingType(country);
-  const shipping =
-    shippingType === "NATIONAL"
-      ? shippingRates.nationalCents
-      : shippingRates.internationalCents;
+
+  const availableShippingServices = useMemo(
+    () => shippingServices.filter((s) => s.type === shippingType && s.active),
+    [shippingServices, shippingType]
+  );
+
+  const selectedShippingService = useMemo(() => {
+    return (
+      availableShippingServices.find((s) => s.id === selectedShippingServiceId) ??
+      availableShippingServices.find((s) => s.isDefault) ??
+      availableShippingServices[0] ??
+      null
+    );
+  }, [availableShippingServices, selectedShippingServiceId]);
+
+  useEffect(() => {
+    if (!selectedShippingService) {
+      setSelectedShippingServiceId("");
+      return;
+    }
+    setSelectedShippingServiceId(selectedShippingService.id);
+  }, [selectedShippingService?.id, shippingType]);
+
+  const shipping = selectedShippingService?.priceCents ?? 0;
+
+  function canProceedFromDestino() {
+    return !!selectedShippingService;
+  }
+
   function canProceedFromFinalClient() {
     return (
       finalClient.finalClientFirstName.trim() &&
@@ -98,6 +132,7 @@ export function NewOrderForm({
         finalClientPhoneSecondary:
           finalClient.finalClientPhoneSecondary || undefined,
         finalClientEmail: finalClient.finalClientEmail || undefined,
+        shippingServiceId: selectedShippingService?.id,
       }),
     });
 
@@ -122,146 +157,142 @@ export function NewOrderForm({
     .join(" ");
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-6 flex gap-2">
-        {[1, 2, 3, 4].map((s) => (
-          <div
-            key={s}
-            className={`h-1 flex-1 rounded ${step >= s ? "bg-wine" : "bg-stone-200"}`}
-          />
-        ))}
-      </div>
+    <div className={cn("max-w-3xl", step === 1 && cart.length > 0 && "pb-24")}>
+      <Stepper steps={STEPS} current={step} />
 
       {step === 1 && (
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">1. Productos y servicios</h2>
             <p className="text-sm text-stone-500 mt-1">
-              Elija cantidades por producto (unidad) o por servicio de loncheado
-              y plateado sobre el producto entero.
+              Elija cantidades por producto o por servicios combinables (loncheado
+              y plateado).
             </p>
           </div>
 
-          <OrderProductPicker
-            variants={variants}
-            getQty={getQty}
-            setQty={setQty}
-          />
+          <OrderProductPicker variants={variants} getQty={getQty} setQty={setQty} />
 
-          <button
-            type="button"
-            onClick={() => {
-              if (cart.length > 0) setStep(2);
-            }}
+          <Button
+            onClick={() => cart.length > 0 && setStep(2)}
             disabled={cart.length === 0}
-            className="rounded-lg bg-wine px-5 py-2.5 text-white disabled:opacity-50"
+            className="hidden sm:inline-flex"
           >
-            Siguiente: Cliente final
-          </button>
+            Siguiente: Destino
+          </Button>
+
+          {cart.length > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-stone-200 bg-white/95 backdrop-blur px-4 py-3 shadow-lg sm:static sm:border-0 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none sm:p-0">
+              <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+                <div className="text-sm">
+                  <p className="text-stone-500">
+                    {cart.length} línea{cart.length !== 1 ? "s" : ""}
+                  </p>
+                  <p className="font-semibold text-stone-900">
+                    Estimado: {formatEuros(estimate.subtotalWithVatCents)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className={btnPrimary}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
       {step === 2 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold">2. Cliente final</h2>
+          <h2 className="text-lg font-semibold">2. Destino y envío</h2>
           <p className="text-sm text-stone-600">
-            Datos del cliente al que va destinado el pedido (comprador final).
+            Indique dónde debe entregarse el pedido y el servicio de transporte.
           </p>
-          <div className="grid gap-3 rounded-xl border border-stone-200 bg-white p-4">
-            <div className="grid grid-cols-2 gap-3">
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 cursor-pointer min-h-[44px]">
               <input
-                placeholder="Nombre *"
-                value={finalClient.finalClientFirstName}
-                onChange={(e) =>
-                  updateFinalClient("finalClientFirstName", e.target.value)
-                }
-                className="rounded-lg border border-stone-300 px-3 py-2"
+                type="radio"
+                name="destination"
+                checked={destinationType === "CLIENT_WAREHOUSE"}
+                onChange={() => setDestinationType("CLIENT_WAREHOUSE")}
               />
+              <span>Sake Team Food — Málaga (almacén)</span>
+            </label>
+            <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 cursor-pointer min-h-[44px]">
               <input
-                placeholder="Apellidos *"
-                value={finalClient.finalClientLastName}
-                onChange={(e) =>
-                  updateFinalClient("finalClientLastName", e.target.value)
-                }
-                className="rounded-lg border border-stone-300 px-3 py-2"
+                type="radio"
+                name="destination"
+                checked={destinationType === "FINAL_CLIENT"}
+                onChange={() => setDestinationType("FINAL_CLIENT")}
               />
-            </div>
-            <input
-              placeholder="Dirección *"
-              value={finalClient.finalClientStreet}
-              onChange={(e) =>
-                updateFinalClient("finalClientStreet", e.target.value)
-              }
-              className="rounded-lg border border-stone-300 px-3 py-2"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                placeholder="Ciudad *"
-                value={finalClient.finalClientCity}
-                onChange={(e) =>
-                  updateFinalClient("finalClientCity", e.target.value)
-                }
-                className="rounded-lg border border-stone-300 px-3 py-2"
-              />
-              <input
-                placeholder="Código postal *"
-                value={finalClient.finalClientPostalCode}
-                onChange={(e) =>
-                  updateFinalClient("finalClientPostalCode", e.target.value)
-                }
-                className="rounded-lg border border-stone-300 px-3 py-2"
-              />
-            </div>
-            <input
-              placeholder="País *"
-              value={finalClient.finalClientCountry}
-              onChange={(e) =>
-                updateFinalClient("finalClientCountry", e.target.value)
-              }
-              className="rounded-lg border border-stone-300 px-3 py-2"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                placeholder="Teléfono *"
-                value={finalClient.finalClientPhone}
-                onChange={(e) =>
-                  updateFinalClient("finalClientPhone", e.target.value)
-                }
-                className="rounded-lg border border-stone-300 px-3 py-2"
-              />
-              <input
-                placeholder="Teléfono contacto 2 (opcional)"
-                value={finalClient.finalClientPhoneSecondary}
-                onChange={(e) =>
-                  updateFinalClient("finalClientPhoneSecondary", e.target.value)
-                }
-                className="rounded-lg border border-stone-300 px-3 py-2"
-              />
-            </div>
-            <input
-              type="email"
-              placeholder="Email (opcional)"
-              value={finalClient.finalClientEmail}
-              onChange={(e) =>
-                updateFinalClient("finalClientEmail", e.target.value)
-              }
-              className="rounded-lg border border-stone-300 px-3 py-2"
-            />
+              <span>Enviar a dirección del cliente final (paso siguiente)</span>
+            </label>
           </div>
 
+          <p className="text-sm text-stone-600">
+            Ámbito de envío: <strong>{shippingTypeLabel(shippingType)}</strong>
+          </p>
+
+          {availableShippingServices.length === 0 ? (
+            <Alert variant="warning">
+              No hay servicios de envío activos para este destino. Contacte con
+              el administrador.
+            </Alert>
+          ) : availableShippingServices.length === 1 ? (
+            <div className="rounded-xl border border-stone-200 bg-white p-4 text-sm">
+              <p className="font-medium text-stone-900">
+                {availableShippingServices[0].label}
+              </p>
+              <p className="mt-1 text-stone-600">
+                {formatEuros(availableShippingServices[0].priceCents)}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {availableShippingServices.map((service) => (
+                <label
+                  key={service.id}
+                  className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-4 cursor-pointer min-h-[44px]"
+                >
+                  <input
+                    type="radio"
+                    name="shippingService"
+                    checked={selectedShippingServiceId === service.id}
+                    onChange={() => setSelectedShippingServiceId(service.id)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm">
+                    <span className="font-medium text-stone-900">
+                      {service.label}
+                      {service.isDefault && (
+                        <span className="ml-2 text-xs text-stone-500">
+                          (predeterminado)
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-stone-600">
+                      {formatEuros(service.priceCents)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-3">
-            <button
-              onClick={() => setStep(1)}
-              className="rounded-lg border border-stone-300 px-5 py-2.5"
-            >
+            <button type="button" onClick={() => setStep(1)} className={btnSecondary}>
               Atrás
             </button>
             <button
-              onClick={() => canProceedFromFinalClient() && setStep(3)}
-              disabled={!canProceedFromFinalClient()}
-              className="rounded-lg bg-wine px-5 py-2.5 text-white disabled:opacity-50"
+              type="button"
+              onClick={() => canProceedFromDestino() && setStep(3)}
+              disabled={!canProceedFromDestino()}
+              className={btnPrimary}
             >
-              Siguiente: Envío
+              Siguiente: Cliente final
             </button>
           </div>
         </section>
@@ -269,59 +300,102 @@ export function NewOrderForm({
 
       {step === 3 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold">3. Envío</h2>
+          <h2 className="text-lg font-semibold">3. Cliente final</h2>
           <p className="text-sm text-stone-600">
-            Cliente final: <strong>{finalClientFullName}</strong>
+            Datos del comprador final — obligatorios para trazabilidad, aunque el
+            envío sea a su almacén en Málaga.
           </p>
-          <div className="space-y-2">
-            <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 cursor-pointer">
-              <input
-                type="radio"
-                checked={destinationType === "CLIENT_WAREHOUSE"}
-                onChange={() => setDestinationType("CLIENT_WAREHOUSE")}
+          <div className="grid gap-3 rounded-xl border border-stone-200 bg-white p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                id="fc-first"
+                label="Nombre *"
+                value={finalClient.finalClientFirstName}
+                onChange={(e) =>
+                  updateFinalClient("finalClientFirstName", e.target.value)
+                }
               />
-              <span>Sake Team Food — Málaga (almacén)</span>
-            </label>
-            <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 cursor-pointer">
-              <input
-                type="radio"
-                checked={destinationType === "FINAL_CLIENT"}
-                onChange={() => setDestinationType("FINAL_CLIENT")}
+              <Input
+                id="fc-last"
+                label="Apellidos *"
+                value={finalClient.finalClientLastName}
+                onChange={(e) =>
+                  updateFinalClient("finalClientLastName", e.target.value)
+                }
               />
-              <span>
-                Enviar a dirección del cliente final ({finalClientFullName})
-              </span>
-            </label>
+            </div>
+            <Input
+              id="fc-street"
+              label="Dirección *"
+              value={finalClient.finalClientStreet}
+              onChange={(e) =>
+                updateFinalClient("finalClientStreet", e.target.value)
+              }
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                id="fc-city"
+                label="Ciudad *"
+                value={finalClient.finalClientCity}
+                onChange={(e) =>
+                  updateFinalClient("finalClientCity", e.target.value)
+                }
+              />
+              <Input
+                id="fc-postal"
+                label="Código postal *"
+                value={finalClient.finalClientPostalCode}
+                onChange={(e) =>
+                  updateFinalClient("finalClientPostalCode", e.target.value)
+                }
+              />
+            </div>
+            <Input
+              id="fc-country"
+              label="País *"
+              value={finalClient.finalClientCountry}
+              onChange={(e) =>
+                updateFinalClient("finalClientCountry", e.target.value)
+              }
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                id="fc-phone"
+                label="Teléfono *"
+                value={finalClient.finalClientPhone}
+                onChange={(e) =>
+                  updateFinalClient("finalClientPhone", e.target.value)
+                }
+              />
+              <Input
+                id="fc-phone2"
+                label="Teléfono contacto 2 (opcional)"
+                value={finalClient.finalClientPhoneSecondary}
+                onChange={(e) =>
+                  updateFinalClient("finalClientPhoneSecondary", e.target.value)
+                }
+              />
+            </div>
+            <Input
+              id="fc-email"
+              label="Email (opcional)"
+              type="email"
+              value={finalClient.finalClientEmail}
+              onChange={(e) =>
+                updateFinalClient("finalClientEmail", e.target.value)
+              }
+            />
           </div>
 
-          {destinationType === "FINAL_CLIENT" && (
-            <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
-              <p className="font-medium text-stone-900">Dirección de envío</p>
-              <p className="mt-1">
-                {finalClient.finalClientStreet}
-                <br />
-                {finalClient.finalClientPostalCode} {finalClient.finalClientCity}
-                <br />
-                {finalClient.finalClientCountry}
-              </p>
-            </div>
-          )}
-
-          <p className="text-sm text-stone-600">
-            Envío {shippingType === "NATIONAL" ? "nacional" : "internacional"}:{" "}
-            <strong>{formatEuros(shipping)}</strong>
-          </p>
-
           <div className="flex gap-3">
-            <button
-              onClick={() => setStep(2)}
-              className="rounded-lg border border-stone-300 px-5 py-2.5"
-            >
+            <button type="button" onClick={() => setStep(2)} className={btnSecondary}>
               Atrás
             </button>
             <button
-              onClick={() => setStep(4)}
-              className="rounded-lg bg-wine px-5 py-2.5 text-white"
+              type="button"
+              onClick={() => canProceedFromFinalClient() && setStep(4)}
+              disabled={!canProceedFromFinalClient()}
+              className={btnPrimary}
             >
               Siguiente: Resumen
             </button>
@@ -342,38 +416,44 @@ export function NewOrderForm({
               {finalClientFullName}
               <br />
               {finalClient.finalClientPhone}
-              {finalClient.finalClientPhoneSecondary &&
-                ` · ${finalClient.finalClientPhoneSecondary}`}
             </p>
-            <p className="font-medium text-stone-900 pt-2">Envío</p>
+            <p className="font-medium text-stone-900 pt-2">Destino</p>
             <p className="text-stone-600">
               {destinationType === "CLIENT_WAREHOUSE"
                 ? "Sake Team Food — Málaga (almacén)"
                 : `${finalClient.finalClientStreet}, ${finalClient.finalClientPostalCode} ${finalClient.finalClientCity}`}
+            </p>
+            <p className="font-medium text-stone-900 pt-2">Servicio de envío</p>
+            <p className="text-stone-600">
+              {selectedShippingService?.label ?? "—"}
+              {selectedShippingService &&
+                ` · ${formatEuros(selectedShippingService.priceCents)}`}
             </p>
           </div>
           <div className="rounded-xl border border-stone-200 bg-white p-4">
             <OrderFinancialSummary
               lines={estimate.lines}
               shippingCostCents={shipping}
-              shippingLabel="Gastos de envío (estimado)"
+              shippingLabel={
+                selectedShippingService
+                  ? `${selectedShippingService.label} (estimado)`
+                  : "Gastos de envío (estimado)"
+              }
               isEstimate
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <Alert variant="error">{error}</Alert>}
 
           <div className="flex gap-3">
-            <button
-              onClick={() => setStep(3)}
-              className="rounded-lg border border-stone-300 px-5 py-2.5"
-            >
+            <button type="button" onClick={() => setStep(3)} className={btnSecondary}>
               Atrás
             </button>
             <button
+              type="button"
               onClick={submit}
               disabled={loading}
-              className="rounded-lg bg-wine px-5 py-2.5 text-white disabled:opacity-60"
+              className={btnPrimary}
             >
               {loading ? "Enviando..." : "Confirmar pedido"}
             </button>

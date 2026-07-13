@@ -46,7 +46,13 @@ export function CatalogNotificationsList() {
     await load();
   }
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50/80 p-5">
+        <p className="text-sm text-stone-500">Cargando avisos del catálogo…</p>
+      </section>
+    );
+  }
 
   if (notifications.length === 0) return null;
 

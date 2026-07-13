@@ -37,12 +37,12 @@ El cobro final de jamón y lomito enteros se ajusta al **peso real** registrado 
 
 ## Envío
 
-El envío es un **servicio a nivel de pedido** (no un producto del catálogo):
+El envío es un **servicio a nivel de pedido** (no un producto del catálogo). Puede haber **varios servicios** por ámbito:
 
-- Nacional (España): 6,00 €
-- Internacional: 15,00 €
+- **Nacional (España)** — p. ej. estándar, urgente
+- **Internacional** — p. ej. estándar, express
 
-Admin y proveedor pueden editar las tarifas desde **Catálogo → Servicio de envío**.
+Por defecto se crean nacional (6,00 €) e internacional (15,00 €). Admin y proveedor pueden **añadir, editar y eliminar** servicios desde **Catálogo → Gestionar productos y servicios → Servicios de envío**. El cliente elige el servicio activo al crear el pedido (se preselecciona el marcado como predeterminado).
 
 ## Requisitos
 
@@ -233,7 +233,8 @@ La página pública muestra el estado del pedido, el desglose fiscal del pedido,
 Campos relevantes del flujo actual:
 
 - **ProductVariant**: `presentation` (`BASE` | `LONCHEADO` | `PLATEADO`), `galvanReference` (por servicio)
-- **ShippingRate**: tarifas nacionales/internacionales, `supplier`
+- **ShippingRate**: servicios de envío (`label`, `type`, `priceCents`, `supplier`, `isDefault`, `active`)
+- **Order**: `shippingServiceId`, `shippingLabel` (nombre del servicio elegido)
 - **CatalogNotification**: avisos al admin por cambios de catálogo del proveedor
 - **OrderLine**: `actualWeightKg`, `actualPieceCount`, `galvanInternalId`
 - **Order**: `cancellationNumber`, `carrierCompany`, `carrierTrackingNumber`, `carrierPhone`

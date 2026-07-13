@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { CatalogTabs } from "@/components/CatalogTabs";
-import { getShippingRates } from "@/lib/shipping-rates";
+import { listShippingServices } from "@/lib/shipping-rates";
 
 export default async function ProviderCatalogPage() {
-  const [products, shippingRates] = await Promise.all([
+  const [products, shippingServices] = await Promise.all([
     prisma.product.findMany({
       where: { active: true },
       include: {
@@ -12,15 +12,18 @@ export default async function ProviderCatalogPage() {
       },
       orderBy: { name: "asc" },
     }),
-    getShippingRates(),
+    listShippingServices(),
   ]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Catálogo Galvan</h1>
+      <div>
+        <h1 className="text-2xl font-bold">Catálogo</h1>
+        <p className="text-sm text-stone-500 mt-1">Gestión Galvan — productos, servicios y envíos</p>
+      </div>
       <CatalogTabs
         products={products}
-        shippingRates={shippingRates}
+        shippingServices={shippingServices}
         mode="provider"
       />
     </div>
