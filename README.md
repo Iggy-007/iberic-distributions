@@ -56,7 +56,7 @@ Usamos **dos entornos separados**:
 
 | Entorno | URL | Para qué |
 |---------|-----|----------|
-| **Local** | [http://localhost:3000](http://localhost:3000) | Probar cambios de código antes de publicarlos |
+| **Local** | [http://localhost:3000](http://localhost:3000) (o `3001` si el 3000 está ocupado) | Probar cambios de código antes de publicarlos |
 | **Producción** | [https://ibericos.enviaclientes.com](https://ibericos.enviaclientes.com) | Uso real (pedidos, catálogo, Kanban) |
 
 ### Datos vs código
@@ -70,7 +70,7 @@ Usamos **dos entornos separados**:
 
 ```text
 1. Arrancar en local     →  npm run start:local   (o pedir al asistente: "arranca en local")
-2. Probar cambios        →  http://localhost:3000
+2. Probar cambios        →  http://localhost:3000 (o el puerto que indique la terminal)
 3. Cuando esté bien      →  commit + push a GitHub (el asistente lo hace cuando lo pidas)
 4. Coolify despliega     →  automático al hacer push a main (o Redeploy manual en Coolify)
 5. Comprobar en prod     →  https://ibericos.enviaclientes.com
@@ -132,8 +132,26 @@ Abrir [http://localhost:3000](http://localhost:3000).
 | `npm run sanity` | Comprueba BD, APIs y rutas (servidor debe estar en marcha) |
 | `npm run db:update-vat` | Recalcula IVA 10%/21% en variantes y pedidos |
 | `npm run db:push` | Aplica cambios del esquema Prisma a la base de datos |
+| `npm run db:migrate-shipping` | Migra tabla `ShippingRate` y aplica esquema (BD existentes) |
+| `npm run db:migrate-documents` | Migra tipos de documento (`ETIQUETA` → ficha unificada) y aplica esquema |
 
-## Si algo deja de funcionar
+## Catálogo — documentación de productos
+
+En **Catálogo → Gestionar productos y servicios**, cada producto puede tener:
+
+| Tipo | Formatos de subida | Uso |
+|------|-------------------|-----|
+| **Ficha Técnica/Etiqueta** | PDF, JPG, PNG | Ficha técnica o etiqueta del producto (un solo tipo unificado) |
+| **Folleto informativo** | PDF | Folleto o documento informativo |
+
+También se puede **añadir un enlace** (URL externa o ruta `/uploads/docs/...`) en lugar de subir archivo.
+
+Los archivos se guardan en `public/uploads/docs/` y se sirven en producción vía `/uploads/docs/{archivo}`.
+
+**Producción (Coolify):** montar un volumen persistente en **Persistent Storage → Volume Mount** con **Destination path** `/app/public/uploads`. Sin volumen, los archivos subidos se pierden al redeployar. Ver [DEPLOY.md](./DEPLOY.md).
+
+La página de gestión usa **paneles colapsables** (servicios de envío, jamón, lomito, etc.) para reducir el scroll.
+
 
 1. **Página sin estilos, errores `Cannot find module` o `routes-manifest.json`**: cerrar todos los terminales con `npm run dev` y ejecutar `npm run dev:clean`. Usar solo un servidor en el puerto **3000**.
 2. **Productos/usuarios desaparecen**: `npm run db:seed`
@@ -163,7 +181,9 @@ Al crear un pedido, el cliente elige productos agrupados por tarjeta (producto b
 
 Navegación: **Panel · Pedidos · Catálogo** (izquierda) y **Usuarios** (derecha).
 
-- **Catálogo**: pestañas *Gestionar productos y servicios* y *Servicio de envío*
+- **Catálogo**: pestañas *Ver catálogo* y *Gestionar productos y servicios*
+  - *Gestionar*: servicios de envío del pedido + edición de productos (presentaciones, precios, documentación)
+  - Secciones colapsables con flecha ▼ en envío y en cada producto
 - El proveedor puede editar el catálogo; el admin recibe **notificaciones** (y email) cuando hay cambios
 
 ## Panel proveedor (Kanban)
@@ -235,6 +255,7 @@ Campos relevantes del flujo actual:
 - **ProductVariant**: `presentation` (`BASE` | `LONCHEADO` | `PLATEADO`), `galvanReference` (por servicio)
 - **ShippingRate**: servicios de envío (`label`, `type`, `priceCents`, `supplier`, `isDefault`, `active`)
 - **Order**: `shippingServiceId`, `shippingLabel` (nombre del servicio elegido)
+- **ProductDocument**: `docType` (`FICHA_TECNICA` | `FOLLETO_INFORMATIVO`), `fileUrl`, `title`
 - **CatalogNotification**: avisos al admin por cambios de catálogo del proveedor
 - **OrderLine**: `actualWeightKg`, `actualPieceCount`, `galvanInternalId`
 - **Order**: `cancellationNumber`, `carrierCompany`, `carrierTrackingNumber`, `carrierPhone`
@@ -248,6 +269,8 @@ Campos relevantes del flujo actual:
 | Rama de despliegue | `main` |
 
 Despliegue en VPS Hostinger con Coolify + PostgreSQL: ver **[DEPLOY.md](./DEPLOY.md)**.
+
+En Coolify, configurar **Persistent Storage → Volume Mount** con destino `/app/public/uploads` para conservar PDFs e imágenes del catálogo entre deploys.
 
 **Actualizar producción tras cambios de código:**
 

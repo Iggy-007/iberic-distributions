@@ -54,12 +54,14 @@ git push -u origin main
 5. **Port**: `3000`
 6. Server: **localhost**
 
-### Persistent volume (catalog PDF uploads)
+### Persistent volume (catalog uploads)
 
-1. App → **Storages** (or Volumes)
-2. Add volume:
-   - **Destination path**: `/app/public/uploads`
-3. Save
+1. App → **Configuration** → **Persistent Storage**
+2. **+ Add** → **Volume Mount**
+3. **Destination path**: `/app/public/uploads`
+4. Save → **Redeploy**
+
+Acepta PDF, JPG y PNG (ficha/etiqueta) y PDF (folleto). Sin este volumen, los archivos subidos desaparecen al redeployar.
 
 ### Domain + HTTPS (when DNS is ready)
 
