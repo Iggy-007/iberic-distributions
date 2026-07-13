@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ShippingType } from "@prisma/client";
 import type { ShippingService } from "@/lib/shipping-rates";
 import { formatEuros, shippingTypeLabel } from "@/lib/shipping";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 
 type Draft = {
   label: string;
@@ -175,32 +176,31 @@ export function ShippingServicesEditor({
   }
 
   return (
-    <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-5 space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-800">
-            Servicios del pedido
-          </p>
-          <h2 className="text-lg font-semibold text-stone-900 mt-1">
-            Servicios de envío
-          </h2>
-          <p className="text-sm text-stone-600 mt-1 max-w-2xl">
+    <CollapsibleSection
+      title="Servicios de envío"
+      subtitle="Servicios del pedido — nacional e internacional"
+      defaultOpen={false}
+      className="border-blue-200 bg-blue-50/40"
+      headerClassName="bg-blue-50/40"
+    >
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="text-sm text-stone-600 max-w-2xl">
             Defina uno o varios servicios por ámbito (nacional / internacional).
             El cliente elegirá entre los activos al crear el pedido; el marcado
             como predeterminado se preselecciona.
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAdd((v) => !v);
+              setError("");
+            }}
+            className="rounded-lg bg-wine px-4 py-2 text-sm text-white"
+          >
+            {showAdd ? "Cancelar" : "+ Nuevo servicio"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setShowAdd((v) => !v);
-            setError("");
-          }}
-          className="rounded-lg bg-wine px-4 py-2 text-sm text-white"
-        >
-          {showAdd ? "Cancelar" : "+ Nuevo servicio"}
-        </button>
-      </div>
 
       {showAdd && (
         <div className="rounded-lg border border-stone-200 bg-white p-4 space-y-3">
@@ -292,7 +292,8 @@ export function ShippingServicesEditor({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-green-700">{message}</p>}
-    </section>
+      </div>
+    </CollapsibleSection>
   );
 }
 

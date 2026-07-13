@@ -166,22 +166,10 @@ async function main() {
         fileUrl: "/uploads/docs/jamon-iberico-75-ficha.pdf",
       },
       {
-        productId: jamon.id,
-        docType: "ETIQUETA",
-        title: "Jamón Ibérico 75%",
-        fileUrl: "/uploads/docs/jamon-iberico-75-etiqueta.pdf",
-      },
-      {
         productId: lomito.id,
         docType: "FICHA_TECNICA",
         title: "Lomito ibérico",
         fileUrl: "/uploads/docs/lomito-iberico-ficha.pdf",
-      },
-      {
-        productId: lomito.id,
-        docType: "ETIQUETA",
-        title: "Lomito ibérico",
-        fileUrl: "/uploads/docs/lomito-iberico-etiqueta.pdf",
       },
     ],
   });

@@ -7,12 +7,26 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageCatalog } from "@/lib/catalog-permissions";
 import { notifyAdminsOfCatalogChange } from "@/lib/catalog-notifications";
+import {
+  CATALOG_DOCUMENT_TYPES,
+  getDocumentTypeLabel,
+  isAllowedDocumentFile,
+  type CatalogDocumentType,
+} from "@/lib/documents";
+
+const docTypeSchema = z.enum(CATALOG_DOCUMENT_TYPES);
 
 const linkSchema = z.object({
   fileUrl: z.union([z.string().url(), z.string().regex(/^\//)]),
-  docType: z.enum(["FICHA_TECNICA", "ETIQUETA"]),
+  docType: docTypeSchema,
   title: z.string().optional(),
 });
+
+function parseDocType(value: FormDataEntryValue | null): CatalogDocumentType | null {
+  if (typeof value !== "string") return null;
+  const parsed = docTypeSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 async function getProductName(productId: string) {
   const product = await prisma.product.findUnique({
@@ -32,6 +46,11 @@ export async function POST(
   }
 
   const { id } = await params;
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) {
+    return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+  }
+
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
@@ -45,16 +64,15 @@ export async function POST(
       data: {
         productId: id,
         docType: parsed.data.docType as DocumentType,
-        title: parsed.data.title ?? null,
-        fileUrl: parsed.data.fileUrl,
+        title: parsed.data.title?.trim() || null,
+        fileUrl: parsed.data.fileUrl.trim(),
       },
     });
 
-    const productName = await getProductName(id);
     await notifyAdminsOfCatalogChange({
       type: "PRODUCT_DOCUMENT_ADDED",
-      summary: `Documento añadido a ${productName}`,
-      detail: parsed.data.title ?? parsed.data.docType,
+      summary: `Documento añadido a ${product.name}`,
+      detail: parsed.data.title ?? getDocumentTypeLabel(parsed.data.docType),
       productId: id,
       actorUserId: session.user.id,
     });
@@ -63,13 +81,28 @@ export async function POST(
   }
 
   const formData = await request.formData();
-  const file = formData.get("file") as File | null;
-  const docType =
-    (formData.get("docType") as DocumentType) || DocumentType.FICHA_TECNICA;
-  const title = (formData.get("title") as string) || null;
+  const file = formData.get("file");
+  const docType = parseDocType(formData.get("docType"));
+  const title = (formData.get("title") as string | null)?.trim() || null;
 
-  if (!file) {
+  if (!docType) {
+    return NextResponse.json({ error: "Tipo de documento no válido" }, { status: 400 });
+  }
+
+  if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
+  }
+
+  if (!isAllowedDocumentFile(file, docType)) {
+    return NextResponse.json(
+      {
+        error:
+          docType === "FICHA_TECNICA"
+            ? "Solo se permiten archivos PDF, JPG o PNG"
+            : "Solo se permiten archivos PDF",
+      },
+      { status: 400 }
+    );
   }
 
   const bytes = await file.arrayBuffer();
@@ -91,11 +124,10 @@ export async function POST(
     },
   });
 
-  const productName = await getProductName(id);
   await notifyAdminsOfCatalogChange({
     type: "PRODUCT_DOCUMENT_ADDED",
-    summary: `Documento subido a ${productName}`,
-    detail: title ?? file.name,
+    summary: `Documento subido a ${product.name}`,
+    detail: title ?? getDocumentTypeLabel(docType),
     productId: id,
     actorUserId: session.user.id,
   });
@@ -131,7 +163,7 @@ export async function DELETE(
     await notifyAdminsOfCatalogChange({
       type: "PRODUCT_DOCUMENT_REMOVED",
       summary: `Documento eliminado de ${productName}`,
-      detail: doc.title ?? doc.docType,
+      detail: doc.title ?? getDocumentTypeLabel(doc.docType),
       productId,
       actorUserId: session.user.id,
     });

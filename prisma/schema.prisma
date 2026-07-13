@@ -44,7 +44,7 @@ enum PriceType {
 
 enum DocumentType {
   FICHA_TECNICA
-  ETIQUETA
+  FOLLETO_INFORMATIVO
 }
 
 enum VariantPresentation {

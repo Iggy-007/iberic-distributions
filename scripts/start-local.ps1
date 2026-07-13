@@ -10,6 +10,15 @@ NEXTAUTH_URL="http://localhost:3000"
 "@ | Set-Content -Encoding utf8 ".env"
 }
 
+# Libera puertos de desarrollo previos (evita "conexión rechazada" o puerto alternativo)
+$ports = 3000, 3001, 3002
+foreach ($port in $ports) {
+  Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue |
+    ForEach-Object {
+      Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+}
+
 $schemaPath = "prisma\schema.prisma"
 $originalSchema = Get-Content $schemaPath -Raw
 
@@ -19,6 +28,9 @@ try {
     $sqliteSchema = $originalSchema -replace 'provider = "postgresql"', 'provider = "sqlite"'
     Set-Content -Path $schemaPath -Value $sqliteSchema -NoNewline
     npx prisma generate | Out-Null
+    if (Test-Path "prisma\migrate-document-types.sql") {
+      npx prisma db execute --file prisma/migrate-document-types.sql 2>$null
+    }
     npx prisma db push | Out-Null
     if (-not (Test-Path "prisma\dev.db")) {
       npm run db:seed

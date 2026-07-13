@@ -10,6 +10,15 @@ if [ "${AUTO_DB_PUSH:-true}" = "true" ] && [ -f /app/prisma/schema.prisma ]; the
       || echo "WARNING: shipping migration prelude failed; continuing with db push."
   fi
 
+  if [ -f /app/prisma/migrate-document-types.sql ]; then
+    echo "Running document types migration prelude..."
+    NODE_PATH=/opt/ops/node_modules \
+      node /opt/ops/node_modules/prisma/build/index.js db execute \
+      --file=/app/prisma/migrate-document-types.sql \
+      --schema=/app/prisma/schema.prisma \
+      || echo "WARNING: document types migration prelude failed; continuing with db push."
+  fi
+
   echo "Applying database schema..."
   NODE_PATH=/opt/ops/node_modules \
     node /opt/ops/node_modules/prisma/build/index.js db push \

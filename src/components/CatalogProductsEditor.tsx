@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { PriceType, VariantPresentation } from "@prisma/client";
-import {
-  ProductDocumentsList,
-  type ProductDocumentItem,
-} from "@/components/ProductDocumentsList";
+import type { ProductDocumentItem } from "@/components/ProductDocumentsList";
+import { ProductDocumentsEditor } from "@/components/ProductDocumentsEditor";
 import { ProductOfferingsFields } from "@/components/ProductOfferingsFields";
-import { getDocumentLinkLabel } from "@/lib/documents";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import type { CatalogDocumentType } from "@/lib/documents";
 import {
   DEFAULT_CREATE_OFFERINGS,
   type ProductOfferingsState,
@@ -79,9 +78,6 @@ export function CatalogProductsEditor({
   );
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
-  const [linkForm, setLinkForm] = useState<
-    Record<string, { url: string; docType: string; title: string }>
-  >({});
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -186,9 +182,10 @@ export function CatalogProductsEditor({
   async function uploadDoc(
     productId: string,
     file: File,
-    docType: "FICHA_TECNICA" | "ETIQUETA"
+    docType: CatalogDocumentType
   ) {
-    setUploading(productId);
+    setUploading(`${productId}:${docType}`);
+    setError("");
     const form = new FormData();
     form.append("file", file);
     form.append("docType", docType);
@@ -198,36 +195,36 @@ export function CatalogProductsEditor({
     });
     setUploading(null);
     if (!res.ok) {
-      setError("No se pudo subir el documento");
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "No se pudo subir el documento");
       return;
     }
     await reload();
   }
 
-  async function addLink(productId: string) {
-    const form = linkForm[productId];
-    if (!form?.url.trim()) return;
-
+  async function addLink(
+    productId: string,
+    docType: CatalogDocumentType,
+    url: string,
+    title: string
+  ) {
     setError("");
     const res = await fetch(`/api/products/${productId}/documents`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        fileUrl: form.url.trim(),
-        docType: form.docType,
-        title: form.title.trim() || undefined,
+        fileUrl: url,
+        docType,
+        title: title || undefined,
       }),
     });
 
     if (!res.ok) {
-      setError("No se pudo añadir el enlace");
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "No se pudo añadir el enlace");
       return;
     }
 
-    setLinkForm((prev) => ({
-      ...prev,
-      [productId]: { url: "", docType: "FICHA_TECNICA", title: "" },
-    }));
     await reload();
   }
 
@@ -241,16 +238,6 @@ export function CatalogProductsEditor({
       return;
     }
     await reload();
-  }
-
-  function getLinkForm(productId: string) {
-    return (
-      linkForm[productId] ?? {
-        url: "",
-        docType: "FICHA_TECNICA",
-        title: "",
-      }
-    );
   }
 
   const createSummary = useMemo(() => {
@@ -359,198 +346,99 @@ export function CatalogProductsEditor({
         </p>
       )}
 
-      {products.map((product) => (
-        <div
+      {products.map((product, index) => (
+        <CollapsibleSection
           key={product.id}
-          className="rounded-xl border border-stone-200 bg-white p-5 space-y-4"
+          title={product.name}
+          subtitle={product.galvanReference || "Sin referencia Galvan"}
+          defaultOpen={index === 0}
+          className="border-stone-200"
         >
-          <div className="space-y-2">
-            <input
-              value={product.name}
-              onChange={(e) =>
-                setProducts((prev) =>
-                  prev.map((p) =>
-                    p.id === product.id ? { ...p, name: e.target.value } : p
-                  )
-                )
-              }
-              className="text-lg font-semibold w-full rounded-lg border border-transparent px-1 py-0.5 hover:border-stone-200 focus:border-wine focus:outline-none"
-            />
-            <label className="block text-sm">
-              <span className="font-medium text-stone-700">
-                Referencia de Pdto Galvan
-              </span>
-              <input
-                required
-                value={product.galvanReference}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm">
+                <span className="font-medium text-stone-700">Nombre del producto</span>
+                <input
+                  value={product.name}
+                  onChange={(e) =>
+                    setProducts((prev) =>
+                      prev.map((p) =>
+                        p.id === product.id ? { ...p, name: e.target.value } : p
+                      )
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium text-stone-700">
+                  Referencia de Pdto Galvan
+                </span>
+                <input
+                  required
+                  value={product.galvanReference}
+                  onChange={(e) =>
+                    setProducts((prev) =>
+                      prev.map((p) =>
+                        p.id === product.id
+                          ? { ...p, galvanReference: e.target.value }
+                          : p
+                      )
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <textarea
+                value={product.description ?? ""}
                 onChange={(e) =>
                   setProducts((prev) =>
                     prev.map((p) =>
                       p.id === product.id
-                        ? { ...p, galvanReference: e.target.value }
+                        ? { ...p, description: e.target.value }
                         : p
                     )
                   )
                 }
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                placeholder="Descripción"
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-600 min-h-[60px]"
               />
-            </label>
-            <textarea
-              value={product.description ?? ""}
-              onChange={(e) =>
-                setProducts((prev) =>
-                  prev.map((p) =>
-                    p.id === product.id
-                      ? { ...p, description: e.target.value }
-                      : p
-                  )
-                )
-              }
-              placeholder="Descripción"
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-600 min-h-[60px]"
-            />
-          </div>
-
-          <ProductOfferingsFields
-            offerings={
-              offeringsByProduct[product.id] ??
-              variantsToOfferingsState(product.variants)
-            }
-            onChange={(offerings) =>
-              setOfferingsByProduct((prev) => ({
-                ...prev,
-                [product.id]: offerings,
-              }))
-            }
-            idPrefix={product.id}
-          />
-
-          <button
-            type="button"
-            onClick={() => saveProduct(product)}
-            disabled={saving === product.id}
-            className="rounded-lg bg-wine px-4 py-2 text-sm text-white disabled:opacity-60"
-          >
-            {saving === product.id ? "Guardando..." : "Guardar producto"}
-          </button>
-
-          <div className="border-t pt-4 space-y-4">
-            <ProductDocumentsList documents={product.documents} />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium mb-2">Subir PDF</p>
-                <select
-                  id={`upload-type-${product.id}`}
-                  className="mb-2 w-full rounded border border-stone-300 px-2 py-1 text-sm"
-                  defaultValue="FICHA_TECNICA"
-                >
-                  <option value="FICHA_TECNICA">Ficha técnica</option>
-                  <option value="ETIQUETA">Etiqueta</option>
-                </select>
-                <label className="inline-block cursor-pointer rounded-lg border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-50">
-                  {uploading === product.id
-                    ? "Subiendo..."
-                    : "Elegir archivo PDF"}
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      const select = document.getElementById(
-                        `upload-type-${product.id}`
-                      ) as HTMLSelectElement;
-                      if (file) {
-                        uploadDoc(
-                          product.id,
-                          file,
-                          (select?.value ?? "FICHA_TECNICA") as
-                            | "FICHA_TECNICA"
-                            | "ETIQUETA"
-                        );
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium mb-2">Añadir enlace</p>
-                <div className="space-y-2">
-                  <select
-                    value={getLinkForm(product.id).docType}
-                    onChange={(e) =>
-                      setLinkForm((prev) => ({
-                        ...prev,
-                        [product.id]: {
-                          ...getLinkForm(product.id),
-                          docType: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full rounded border border-stone-300 px-2 py-1 text-sm"
-                  >
-                    <option value="FICHA_TECNICA">Ficha técnica</option>
-                    <option value="ETIQUETA">Etiqueta</option>
-                  </select>
-                  <input
-                    placeholder="https://... o /uploads/docs/archivo.pdf"
-                    value={getLinkForm(product.id).url}
-                    onChange={(e) =>
-                      setLinkForm((prev) => ({
-                        ...prev,
-                        [product.id]: {
-                          ...getLinkForm(product.id),
-                          url: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full rounded border border-stone-300 px-2 py-1 text-sm"
-                  />
-                  <input
-                    placeholder="Título opcional"
-                    value={getLinkForm(product.id).title}
-                    onChange={(e) =>
-                      setLinkForm((prev) => ({
-                        ...prev,
-                        [product.id]: {
-                          ...getLinkForm(product.id),
-                          title: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full rounded border border-stone-300 px-2 py-1 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addLink(product.id)}
-                    className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-50"
-                  >
-                    Añadir enlace
-                  </button>
-                </div>
-              </div>
             </div>
 
-            {product.documents.length > 0 && (
-              <ul className="text-xs text-stone-500 space-y-1">
-                {product.documents.map((doc) => (
-                  <li key={doc.id} className="flex justify-between gap-2">
-                    <span>{getDocumentLinkLabel(doc.docType, doc.title)}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeDoc(product.id, doc.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Eliminar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ProductOfferingsFields
+              offerings={
+                offeringsByProduct[product.id] ??
+                variantsToOfferingsState(product.variants)
+              }
+              onChange={(offerings) =>
+                setOfferingsByProduct((prev) => ({
+                  ...prev,
+                  [product.id]: offerings,
+                }))
+              }
+              idPrefix={product.id}
+            />
+
+            <button
+              type="button"
+              onClick={() => saveProduct(product)}
+              disabled={saving === product.id}
+              className="rounded-lg bg-wine px-4 py-2 text-sm text-white disabled:opacity-60"
+            >
+              {saving === product.id ? "Guardando..." : "Guardar producto"}
+            </button>
+
+            <ProductDocumentsEditor
+              productId={product.id}
+              documents={product.documents}
+              uploading={uploading?.startsWith(`${product.id}:`) ?? false}
+              onUpload={uploadDoc}
+              onAddLink={addLink}
+              onRemove={removeDoc}
+              onError={setError}
+            />
           </div>
-        </div>
+        </CollapsibleSection>
       ))}
     </div>
   );

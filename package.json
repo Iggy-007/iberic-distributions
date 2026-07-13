@@ -17,6 +17,7 @@
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:ensure": "tsx scripts/ensure-data.ts",
     "db:migrate-shipping": "prisma db execute --file prisma/migrate-shipping-services.sql && prisma db push",
+    "db:migrate-documents": "prisma db execute --file prisma/migrate-document-types.sql && prisma db push",
     "setup:local": "powershell -ExecutionPolicy Bypass -File scripts/setup-local.ps1",
     "start:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "sanity": "tsx scripts/sanity-check.ts",
