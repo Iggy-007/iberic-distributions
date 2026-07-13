@@ -1,5 +1,8 @@
 #!/bin/sh
 
+mkdir -p /app/public/uploads/docs
+chown -R nextjs:nodejs /app/public/uploads
+
 if [ "${AUTO_DB_PUSH:-true}" = "true" ] && [ -f /app/prisma/schema.prisma ]; then
   if [ -f /app/prisma/migrate-shipping-services.sql ]; then
     echo "Running shipping services migration prelude..."
@@ -34,4 +37,4 @@ if [ "${RESET_ADMIN_ON_START:-false}" = "true" ] && [ -f /opt/ops/ops-reset-admi
     || echo "WARNING: admin reset failed; starting app anyway."
 fi
 
-exec "$@"
+exec su-exec nextjs "$@"

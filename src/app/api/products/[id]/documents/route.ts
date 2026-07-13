@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { DocumentType } from "@prisma/client";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
@@ -13,6 +12,11 @@ import {
   isAllowedDocumentFile,
   type CatalogDocumentType,
 } from "@/lib/documents";
+import {
+  UPLOAD_DOCS_DIR,
+  uploadDocsFileUrl,
+  resolveUploadDocPath,
+} from "@/lib/upload-storage";
 
 const docTypeSchema = z.enum(CATALOG_DOCUMENT_TYPES);
 
@@ -107,20 +111,26 @@ export async function POST(
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-  const uploadsDir = path.join(process.cwd(), "public", "uploads", "docs");
-  await mkdir(uploadsDir, { recursive: true });
-
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const filename = `${Date.now()}-${safeName}`;
-  const filePath = path.join(uploadsDir, filename);
-  await writeFile(filePath, buffer);
+
+  try {
+    await mkdir(UPLOAD_DOCS_DIR, { recursive: true });
+    await writeFile(resolveUploadDocPath(filename), buffer);
+  } catch (error) {
+    console.error("Upload write failed:", error);
+    return NextResponse.json(
+      { error: "No se pudo guardar el archivo en el servidor" },
+      { status: 500 }
+    );
+  }
 
   const doc = await prisma.productDocument.create({
     data: {
       productId: id,
       docType,
       title,
-      fileUrl: `/uploads/docs/${filename}`,
+      fileUrl: uploadDocsFileUrl(filename),
     },
   });
 
