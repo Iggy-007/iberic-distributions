@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS "ShippingRate";
+DROP TABLE IF EXISTS "ShippingRate" CASCADE;
